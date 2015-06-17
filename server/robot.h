@@ -1,3 +1,6 @@
+#ifndef ROBOT_H
+#define ROBOT_H
+
 #include<stdio.h>
 #include<string.h>
 #include<stdlib.h>
@@ -26,3 +29,5 @@ void robot_each(robot* iterator, void* arg, void (*func)(robot*, void*));
 robot* robot_new(unsigned int id, char* hostname, int sock, struct sockaddr_in* sock_info);
 robot* robot_clear(robot* iterator);
 void robot_show(robot* r, void* unused);
+
+#endif

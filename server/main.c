@@ -5,13 +5,173 @@
 #include<arpa/inet.h>
 #include<unistd.h>
 #include<pthread.h>
+#include<ncurses.h>
 
 #include "robot.h"
 
 void *connection_handler(void *);
 
-int main(int argc, char* argv[]) {
+// Test handler for foo command
+void foo(robot* r, int argc, char* argv[]) {
+	printw("[i] foo\n[i] arguments : \n");
+	int i = 0;
 	
+	while(argv[i]) {
+		printw("\t'%s'\n", argv[i++]);
+	}
+}
+
+// Test handler for bar command
+void bar(robot* r, int argc, char* argv[]) {
+	printw("[i] bar\n[i] arguments : \n");
+	int i = 0;
+	
+	while(argv[i]) {
+		printw("\t'%s'\n", argv[i++]);
+	}
+}
+
+// Handler option
+struct option {
+	char* option;
+	void (*action)(robot*, int, char**);
+};
+
+// Handle a specified command with the given command and options
+void handle_command(char* command, const struct option *options) {
+	int i = 0, in_value = 0, argc = 0;
+	char* argv[32] = { NULL };
+	
+	while(command[i]) {
+		if(command[i] == ' ') {
+			if(in_value) {
+				command[i] = '\0';
+				in_value = 0;
+			}
+		} else {
+			if(!in_value) {
+				argv[argc++] = command + i;
+				in_value = 1;
+				
+				if(argc >= 32)
+					break;
+			}
+		}
+		
+		i++;
+	}
+	
+	if(!argc)
+		return;
+	
+	i = 0;
+	while(options[i].option) {
+		if(strstr(argv[0], options[i].option)) {
+			options[i].action(NULL, argc - 1, argv + 1);
+			return;
+		}
+		
+		i++;
+	}
+	
+	printw("[i] Unkown command : %s\n", argv[0]);
+}
+
+// Entry point
+int main(void) {
+	
+	// Init ncurses
+	WINDOW *w = initscr();
+	int x, y;
+	raw();
+	keypad(stdscr, TRUE);
+	noecho();
+	
+	printw("[i] -------------------------------------- \n");
+	printw("[i]             SimpleRobot\n");
+	printw("[i] -------------------------------------- \n");
+	printw("[i] Press escape to exit \n");
+	printw("[i] Test commands : foo & bar \n");
+	
+	// Buffer
+	char buffer[1024] = { 0 };
+	
+	// Options (NULL terminated)
+	struct option options[] = {
+		{ "foo", foo },
+		{ "bar", bar },
+		{ NULL, NULL },
+	};
+	
+	while(1) {
+		int c = 0, i = 0, imax = 0;
+		
+		// Show command input
+		printw("[>] ");
+		
+		while((c = getch())) {
+			
+			// End of input
+			if(c == '\n') {
+				buffer[i++] = '\0';
+				printw("%c", c);
+				break;
+			}
+			
+		    switch(c) {
+		    case KEY_UP: // TODO
+				printw("\nUp Arrow");
+		        break;
+		    case KEY_DOWN: // TODO
+				printw("\nDown Arrow");
+		        break;
+		    case KEY_LEFT: // Move to the left
+				if(i > 0 ) {
+					i--;
+					getyx(w, y, x);
+					wmove(w, y, x - 1);
+				}
+		        break;
+		    case KEY_RIGHT: // Move to the right
+				if(i < imax) {
+					getyx(w, y, x);
+					wmove(w, y, x + 1);
+					i++;
+				}
+		        break;
+		    case 27: // Escape key
+				endwin();
+				return 0;
+		        break;
+			case KEY_BACKSPACE: // Remove & move to the left
+				getyx(w, y, x);
+				wmove(w, y, x - 1);
+				delch();
+				
+				if(i == imax)
+					imax--;
+				i--;
+				
+		        break;
+		    default: // Read value
+				buffer[i] = (char) c;
+				printw("%c", c);
+				
+				if(i == imax)
+					imax++;
+				i++;
+		    }
+		}
+		
+		handle_command(buffer, options);
+	}
+	
+	
+	printw("\n\Exiting Now\n");
+	endwin();
+	return 0;
+	
+	// Robot list tests
 	robot* list = NULL;
 	
 	list = robot_add(list, robot_new(0, "bonjour", 0,NULL));
@@ -33,6 +193,7 @@ int main(int argc, char* argv[]) {
 	list = robot_clear(list);
 	
 	/*
+	// Server startup 
 	int socket_desc, socket_client_desc;
 	socklen_t size;
 	struct sockaddr_in server;
@@ -89,7 +250,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }*/
 	
-	return 0;
+	//return 0;
 }
 
 /*
