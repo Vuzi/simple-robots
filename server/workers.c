@@ -1,12 +1,12 @@
 #include "workers.h"
 
 // -- Global values
-char worker_stop = 0;
-pthread_t threads[WORKER_THREAD_NB]; // Array of threads
-list actions;                        // List of actions
-pthread_mutex_t worker_mutex;        // General mutex
-pthread_cond_t worker_cond;          // Thread shared condition
-pthread_cond_t worker_join_cond;     // Actions empty condition
+static char worker_stop = 0;
+static pthread_t threads[WORKER_THREAD_NB]; // Array of threads
+static list actions;                        // List of actions
+static pthread_mutex_t worker_mutex;        // General mutex
+static pthread_cond_t worker_cond;          // Thread shared condition
+static pthread_cond_t worker_join_cond;     // Actions empty condition
 
 // Worker handler used in each worker thread
 void* worker_handler(void* unused) {
