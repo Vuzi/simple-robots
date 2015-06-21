@@ -256,7 +256,7 @@ void* server_handler(void* w) {
 		char ip_addr[INET_ADDRSTRLEN];
 	
 	    pthread_mutex_lock(&robot_mutex);
-		list_append(&robots, (void*) robot_new(0, inet_ntop(AF_INET, &(client.sin_addr), ip_addr, INET_ADDRSTRLEN), socket_client_desc, &client));
+		list_append(&robots, (void*) robot_new(inet_ntop(AF_INET, &(client.sin_addr), ip_addr, INET_ADDRSTRLEN), socket_client_desc, &client));
 	    pthread_mutex_unlock(&robot_mutex);
 
 		// Reset the value

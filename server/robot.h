@@ -20,7 +20,7 @@ struct robot {
 typedef struct robot robot;
 
 // Prototypes
-robot* robot_new(unsigned int id, const char* hostname, int sock, const struct sockaddr_in* sock_info);
-void robot_init(robot* r, unsigned int id, const char* hostname, int sock, const struct sockaddr_in* sock_info);
+robot* robot_new(const char* hostname, int sock, const struct sockaddr_in* sock_info);
+void robot_init(robot* r, const char* hostname, int sock, const struct sockaddr_in* sock_info);
 
 #endif
