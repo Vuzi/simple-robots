@@ -8,8 +8,30 @@
 #include<ncurses.h>
 
 #include "robot.h"
+#include "list.h"
 
+#define BUFFER_SIZE 1024
+
+list robots;                 // List of robots
+pthread_mutex_t robot_mutex; // Robot list mutex
+
+
+// -- Prototype
 void *connection_handler(void *);
+void* server_handler(void* unused);
+
+// -- Handlers
+void show_robot(robot *r, void* unused) {
+	printw("[>] %i > %s\n", r->id, r->hostname);
+}
+
+void show_robots(robot* r, int argc, char* argv[]) {
+    pthread_mutex_lock(&robot_mutex);
+	printw("[i] Robots connected : \n");
+	list_each(&robots, NULL, (void (*)(void *, void *))show_robot);
+    pthread_mutex_unlock(&robot_mutex);
+	printw("[i] ------------------ \n");
+}
 
 // Test handler for foo command
 void foo(robot* r, int argc, char* argv[]) {
@@ -77,16 +99,37 @@ void handle_command(char* command, const struct option *options) {
 	printw("[i] Unkown command : %s\n", argv[0]);
 }
 
+// -- Functions
+// Init ncurses
+WINDOW* ncurses_init() {
+	WINDOW *w = initscr();
+	raw();
+	keypad(stdscr, TRUE);
+	scrollok(w, TRUE);
+	noecho();
+	
+	return w;
+}
+
 // Entry point
 int main(void) {
 	
 	// Init ncurses
-	WINDOW *w = initscr();
+	WINDOW *w = ncurses_init();
 	int x, y;
-	raw();
-	keypad(stdscr, TRUE);
-	noecho();
 	
+	// Init robot list
+	list_init(&robots);
+    pthread_mutex_init(&robot_mutex, NULL);
+	
+	// Init the server's listener thread
+    pthread_t thread;
+	if(pthread_create(&thread, NULL, server_handler, NULL) < 0) {
+        printw("[x] Could not create server thread : ");
+        return 1;
+	}
+
+	// Show greetings
 	printw("[i] -------------------------------------- \n");
 	printw("[i]             SimpleRobot\n");
 	printw("[i] -------------------------------------- \n");
@@ -94,12 +137,13 @@ int main(void) {
 	printw("[i] Test commands : foo & bar \n");
 	
 	// Buffer
-	char buffer[1024] = { 0 };
+	char buffer[BUFFER_SIZE] = { 0 };
 	
 	// Options (NULL terminated)
 	struct option options[] = {
 		{ "foo", foo },
 		{ "bar", bar },
+		{ "show", show_robots },
 		{ NULL, NULL },
 	};
 	
@@ -142,22 +186,25 @@ int main(void) {
 		    case 27: // Escape key
 				goto end;
 			case KEY_BACKSPACE: // Remove & move to the left
-				getyx(w, y, x);
-				wmove(w, y, x - 1);
-				delch();
-				
-				if(i == imax)
-					imax--;
-				i--;
-				
+				if(i > 0) {
+					getyx(w, y, x);
+					wmove(w, y, x - 1);
+					delch();
+					
+					if(i == imax)
+						imax--;
+					i--;
+				}
 		        break;
 		    default: // Read value
-				buffer[i] = (char) c;
-				printw("%c", c);
-				
-				if(i == imax)
-					imax++;
-				i++;
+				if(i < BUFFER_SIZE) {
+					buffer[i] = (char) c;
+					printw("%c", c);
+					
+					if(i == imax)
+						imax++;
+					i++;
+				}
 		    }
 		}
 		
@@ -168,8 +215,10 @@ int main(void) {
 	printw("\n\Exiting Now\n");
 	endwin();
 	return 0;
-	
-	/*
+}
+
+// Server handler thread
+void* server_handler(void* w) {
 	// Server startup 
 	int socket_desc, socket_client_desc;
 	socklen_t size;
@@ -180,67 +229,44 @@ int main(void) {
 	socket_desc = socket(AF_INET, SOCK_STREAM, 0);
 	
 	if(socket_desc < 0) {
-        printf("[x] Could not create socket");
-        return 1;
+        perror("[x] Could not create socket");
+        return NULL;
 	}
 	
 	// Prepare server informations
 	server.sin_family = AF_INET;
     server.sin_addr.s_addr = INADDR_ANY;
-    server.sin_port = htons(8888);
+    server.sin_port = htons(8080);
 	
 	// Bind
 	if(bind(socket_desc, (struct sockaddr*)&server, sizeof(server)) < 0) {
         perror("[x] Bind failed : ");
-        return 1;
+        return NULL;
 	}
 	
 	// List on the socket
 	if(listen(socket_desc, 15) < 0) {
         perror("[x] Listen failed : ");
-        return 1;
+        return NULL;
 	}
 	
     // Accept and incoming connection
-    puts("[i] Waiting for incoming connections...");
-	
 	size = (socklen_t) sizeof(client);
 	while((socket_client_desc = accept(socket_desc, (struct sockaddr*)&client, &size))) {
-        printf("[i] Connection accepted from %s\n", inet_ntoa(client.sin_addr));
-		
-		// Start handler thread
-        pthread_t thread;
-        int* new_sock = malloc(sizeof(socket_client_desc));
-        *new_sock = socket_client_desc;
-		
-		if(pthread_create(&thread, NULL, connection_handler, (void*)new_sock) < 0) {
-            perror("[x] Could not create thread : ");
-            return 1;
-		}
-		
+		char ip_addr[INET_ADDRSTRLEN];
+	
+	    pthread_mutex_lock(&robot_mutex);
+		list_append(&robots, (void*) robot_new(0, inet_ntop(AF_INET, &(client.sin_addr), ip_addr, INET_ADDRSTRLEN), socket_client_desc, &client));
+	    pthread_mutex_unlock(&robot_mutex);
+
 		// Reset the value
 		size = (socklen_t) sizeof(client);
 	}
 
     if (socket_client_desc < 0) {
         perror("[x] Accept failed : ");
-        return 1;
-    }*/
-	
-	//return 0;
-}
-
-/*
- * This will handle connection for each client
- *
-void* connection_handler(void* socket_desc) {
-    // Get the socket descriptor
-    int sock = *((int*)socket_desc);
-	
-	char* msg = "Hello world !\n";
-	write(sock, msg, strlen(msg) * sizeof(char));
-	
-	close(sock);
+        return NULL;
+    }
 	
 	return NULL;
-}*/
+}
