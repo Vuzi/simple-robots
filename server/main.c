@@ -140,9 +140,7 @@ int main(void) {
 				}
 		        break;
 		    case 27: // Escape key
-				endwin();
-				return 0;
-		        break;
+				goto end;
 			case KEY_BACKSPACE: // Remove & move to the left
 				getyx(w, y, x);
 				wmove(w, y, x - 1);
@@ -166,31 +164,10 @@ int main(void) {
 		handle_command(buffer, options);
 	}
 	
-	
+	end:
 	printw("\n\Exiting Now\n");
 	endwin();
 	return 0;
-	
-	// Robot list tests
-	robot* list = NULL;
-	
-	list = robot_add(list, robot_new(0, "bonjour", 0,NULL));
-	list = robot_add(list, robot_new(0, "bonjour2", 0, NULL));
-	list = robot_add(list, robot_new(0, "bonjour3", 0, NULL));
-	
-	robot_each(list, NULL, robot_show);
-	puts("-------------------- delete 1");
-	list = robot_remove(list, 1);
-	robot_each(list, NULL, robot_show);
-	puts("-------------------- delete 3");
-	list = robot_remove(list, 3);
-	robot_each(list, NULL, robot_show);
-	puts("-------------------- delete 2");	
-	list = robot_remove(list, 2);
-	robot_each(list, NULL, robot_show);
-	puts("--------------------");
-	
-	list = robot_clear(list);
 	
 	/*
 	// Server startup 
