@@ -20,7 +20,9 @@ struct robot {
 typedef struct robot robot;
 
 // Prototypes
-robot* robot_new(const char* hostname, int sock, const struct sockaddr_in* sock_info);
-void robot_init(robot* r, const char* hostname, int sock, const struct sockaddr_in* sock_info);
+robot* robot_new(int sock, const struct sockaddr_in* sock_info);
+void robot_init(robot* r, int sock, const struct sockaddr_in* sock_info);
+
+// inet_ntop(AF_INET, &(client.sin_addr), ip_addr, INET_ADDRSTRLEN), 
 
 #endif

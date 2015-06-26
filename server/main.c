@@ -9,23 +9,26 @@
 
 #include "robot.h"
 #include "list.h"
+#include "workers.h"
 
 #define BUFFER_SIZE 1024
+#define NET_BUFFER_SIZE 8196
 
 list robots;                 // List of robots
 pthread_mutex_t robot_mutex; // Robot list mutex
 
+int port = 8080;
 
 // -- Prototype
-void *connection_handler(void *);
-void* server_handler(void* unused);
+static void* server_handler(void* unused);
+static void action_connect(void* val);
 
 // -- Handlers
 void show_robot(robot *r, void* unused) {
 	printw("[>] %i > %s\n", r->id, r->hostname);
 }
 
-void show_robots(robot* r, int argc, char* argv[]) {
+void show_robots(int argc, char* argv[]) {
     pthread_mutex_lock(&robot_mutex);
 	printw("[i] Robots connected : \n");
 	list_each(&robots, NULL, (void (*)(void *, void *))show_robot);
@@ -33,8 +36,18 @@ void show_robots(robot* r, int argc, char* argv[]) {
 	printw("[i] ------------------ \n");
 }
 
+void send_command_robot(robot *r, char** params) {
+	// TODO	
+}
+
+void send_command_robots(int argc, char* argv[]) {
+    pthread_mutex_lock(&robot_mutex);
+	list_each(&robots, argv, (void (*)(void *, void *))send_command_robot);
+    pthread_mutex_unlock(&robot_mutex);
+}
+
 // Test handler for foo command
-void foo(robot* r, int argc, char* argv[]) {
+void foo(int argc, char* argv[]) {
 	printw("[i] foo\n[i] arguments : \n");
 	int i = 0;
 	
@@ -44,7 +57,7 @@ void foo(robot* r, int argc, char* argv[]) {
 }
 
 // Test handler for bar command
-void bar(robot* r, int argc, char* argv[]) {
+void bar(int argc, char* argv[]) {
 	printw("[i] bar\n[i] arguments : \n");
 	int i = 0;
 	
@@ -56,7 +69,7 @@ void bar(robot* r, int argc, char* argv[]) {
 // Handler option
 struct option {
 	char* option;
-	void (*action)(robot*, int, char**);
+	void (*action)(int, char**);
 };
 
 // Handle a specified command with the given command and options
@@ -89,7 +102,7 @@ void handle_command(char* command, const struct option *options) {
 	i = 0;
 	while(options[i].option) {
 		if(strstr(argv[0], options[i].option)) {
-			options[i].action(NULL, argc - 1, argv + 1);
+			options[i].action(argc - 1, argv + 1);
 			return;
 		}
 		
@@ -112,7 +125,11 @@ WINDOW* ncurses_init() {
 }
 
 // Entry point
-int main(void) {
+int main(int argc, char** argv) {
+	
+	// TODO : args handling
+	if(argv[1] != NULL)
+		port = atoi(argv[1]);
 	
 	// Init ncurses
 	WINDOW *w = ncurses_init();
@@ -121,6 +138,9 @@ int main(void) {
 	// Init robot list
 	list_init(&robots);
     pthread_mutex_init(&robot_mutex, NULL);
+	
+	// Init workers
+	worker_init();
 	
 	// Init the server's listener thread
     pthread_t thread;
@@ -164,10 +184,10 @@ int main(void) {
 			
 		    switch(c) {
 		    case KEY_UP: // TODO
-				printw("\nUp Arrow");
+				//printw("\nUp Arrow");
 		        break;
 		    case KEY_DOWN: // TODO
-				printw("\nDown Arrow");
+				//printw("\nDown Arrow");
 		        break;
 		    case KEY_LEFT: // Move to the left
 				if(i > 0 ) {
@@ -213,12 +233,67 @@ int main(void) {
 	
 	end:
 	printw("\n\Exiting Now\n");
+	
+	// Stop ncurses
 	endwin();
+	
+	// Stop all the workers
+	worker_quit();
+	
 	return 0;
 }
 
+// Connection handler
+static void action_connect(void* val) {
+	
+	robot *r = (robot*) val;
+	
+	int n;
+	char buf[NET_BUFFER_SIZE] = {0};
+	
+	// Read the greeting from the client
+	if(!(n = read(r->sock, buf, NET_BUFFER_SIZE - 1))) {
+		goto error;
+	}
+	buf[n--] = '\0';
+	
+	while(n && ( buf[n] == '\n' || buf[n] == '\r' || buf[n] == ' ')) // Trim
+		buf[n--] = '\0';
+	
+	// Extract hostname
+	if(strncmp("hello ", buf, 6))
+		goto error; // Not possible
+	strncpy(r->hostname, buf + 6, 512);
+	
+	// Send ID
+	snprintf(buf, NET_BUFFER_SIZE, "hello %u\n", r->id);
+	write(r->sock, buf, strlen(buf));
+	
+	// Read "ready"
+	if(!(n = read(r->sock, buf, NET_BUFFER_SIZE - 1))) {
+		goto error;
+	}
+	buf[n] = '\0';
+	
+	if(strncmp("ready", buf, 5)) {
+		goto error; // Not ready
+	}
+	
+	// Robot OK : add to the list
+    pthread_mutex_lock(&robot_mutex);
+	list_append(&robots, (void*) r);
+    pthread_mutex_unlock(&robot_mutex);
+	return;
+	
+	// Robot KO : close & free
+	error:
+	close(r->sock);
+	free(r);
+	return;
+}
+
 // Server handler thread
-void* server_handler(void* w) {
+static void* server_handler(void* w) {
 	// Server startup 
 	int socket_desc, socket_client_desc;
 	socklen_t size;
@@ -236,7 +311,7 @@ void* server_handler(void* w) {
 	// Prepare server informations
 	server.sin_family = AF_INET;
     server.sin_addr.s_addr = INADDR_ANY;
-    server.sin_port = htons(8080);
+    server.sin_port = htons(port);
 	
 	// Bind
 	if(bind(socket_desc, (struct sockaddr*)&server, sizeof(server)) < 0) {
@@ -253,11 +328,12 @@ void* server_handler(void* w) {
     // Accept and incoming connection
 	size = (socklen_t) sizeof(client);
 	while((socket_client_desc = accept(socket_desc, (struct sockaddr*)&client, &size))) {
-		char ip_addr[INET_ADDRSTRLEN];
-	
-	    pthread_mutex_lock(&robot_mutex);
-		list_append(&robots, (void*) robot_new(inet_ntop(AF_INET, &(client.sin_addr), ip_addr, INET_ADDRSTRLEN), socket_client_desc, &client));
-	    pthread_mutex_unlock(&robot_mutex);
+		action a;
+		
+		a.perform = action_connect;
+		a.args = (void*) robot_new(socket_client_desc, &client);
+
+		worker_add(&a);
 
 		// Reset the value
 		size = (socklen_t) sizeof(client);
@@ -270,3 +346,5 @@ void* server_handler(void* w) {
 	
 	return NULL;
 }
+
+	
