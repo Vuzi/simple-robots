@@ -19,7 +19,6 @@ struct action {
 typedef struct action action;
 
 // -- Prototypes
-void* worker_handler(void* unused);
 void worker_init();
 void worker_add(action* a);
 void worker_join();

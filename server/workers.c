@@ -9,7 +9,7 @@ static pthread_cond_t worker_cond;          // Thread shared condition
 static pthread_cond_t worker_join_cond;     // Actions empty condition
 
 // Worker handler used in each worker thread
-void* worker_handler(void* unused) {
+static void* worker_handler(void* unused) {
     
     while(1) {
         pthread_mutex_lock(&worker_mutex);
