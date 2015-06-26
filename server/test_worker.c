@@ -18,6 +18,9 @@ int main(void) {
 	
 	worker_init();
 	
+	puts("Case 1 : 10 actions (5s) + worker_join");
+	puts("---------------------------------------");
+	
 	for(; i < ACTION_NB; i++) {
 		action_to_do[i].perform = my_action;
 		action_to_do[i].args = (void*) i;
@@ -28,8 +31,24 @@ int main(void) {
 	
 	worker_join();
 	puts("All actions terminated");
+	puts("---------------------------------------");
+	
+	
+	puts("Case 2 : 10 actions (5s) + worker_quit after 1s");
+	puts("---------------------------------------");
+	worker_init();
+	
+	for(i = 0; i < ACTION_NB; i++) {
+		action_to_do[i].perform = my_action;
+		action_to_do[i].args = (void*) i;
+		
+		worker_add(&action_to_do[i]);
+		printf("Action #%li added\n", i);
+	}
 	
 	worker_quit();
+	puts("All actions canceled");
+	puts("---------------------------------------");
 	
 	return 0;
 }

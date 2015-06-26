@@ -31,13 +31,14 @@ void* worker_handler(void* unused) {
         
         if(a) {
             // In some case workers will be notified with
-            // no actions to perform, only test if there is an action
+            // no actions to perform, only do if there is an action
             a->perform(a->args);
+            free(a); // Also, free the action
         }
     }
     
     pthread_mutex_unlock(&worker_mutex);
-    pthread_exit(NULL);
+    return NULL;
 }
 
 // Init the worker system, and start all the worker threads
@@ -57,8 +58,16 @@ void worker_init() {
 
 // Add an action to perform
 void worker_add(action* a) {
+    // Copy element to have full control on its life cycle
+    action* copy = malloc(sizeof(action));
+    
+    if(!copy)
+        return;
+        
+    memcpy(copy, a, sizeof(action));
+    
     pthread_mutex_lock(&worker_mutex);
-    list_append(&actions, a);
+    list_append(&actions, copy);
     pthread_cond_broadcast(&worker_cond);
     pthread_mutex_unlock(&worker_mutex);
 }
@@ -77,4 +86,11 @@ void worker_quit() {
     worker_stop = 1;
     pthread_cond_broadcast(&worker_cond);
     pthread_mutex_unlock(&worker_mutex);
+    
+    // Wait for everyone to stop
+    for(int i = 0; i < WORKER_THREAD_NB; i++)
+        pthread_join(threads[i], NULL);
+    
+    // Free the list elements
+    list_clear(&actions, free);
 }
