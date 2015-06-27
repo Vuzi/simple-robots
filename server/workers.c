@@ -3,19 +3,22 @@
 // -- Global values
 static char worker_stop = 0;
 static pthread_t threads[WORKER_THREAD_NB]; // Array of threads
-static list actions;                        // List of actions
+static int busy_threads;                    // List of busy threads
+static list actions;                        // List of actions   
 static pthread_mutex_t worker_mutex;        // General mutex
 static pthread_cond_t worker_cond;          // Thread shared condition
 static pthread_cond_t worker_join_cond;     // Actions empty condition
 
 // Worker handler used in each worker thread
-static void* worker_handler(void* unused) {
+static void* worker_handler(void* val) {
+    long id = (long) id;
     
     while(1) {
         pthread_mutex_lock(&worker_mutex);
         
         if(actions.length == 0) {
-            pthread_cond_signal(&worker_join_cond);
+            FLAG_DOWN(busy_threads, id); // Register as sleeping thread
+            pthread_cond_signal(&worker_join_cond); // Send join signal
             
             if(!worker_stop) // No actions, wait
                 pthread_cond_wait(&worker_cond, &worker_mutex);
@@ -27,6 +30,7 @@ static void* worker_handler(void* unused) {
         
         // Release mutex, and get the action to perform
         action* a = (action*) list_pop(&actions);
+        FLAG_UP(busy_threads, id);
         pthread_mutex_unlock(&worker_mutex);
         
         if(a) {
@@ -49,9 +53,12 @@ void worker_init() {
     pthread_cond_init(&worker_cond, NULL);
     pthread_cond_init(&worker_join_cond, NULL);
     
+    // Register all threads as free
+    busy_threads = 0x0;
+    
     // Launch all the worker threads
-    for(int i = 0; i < WORKER_THREAD_NB; i++)
-        pthread_create(&threads[i], NULL, worker_handler, NULL);
+    for(long i = 0; i < WORKER_THREAD_NB; i++)
+        pthread_create(&threads[i], NULL, worker_handler, (void*) i);
     
     list_init(&actions);
 }
@@ -75,7 +82,8 @@ void worker_add(action* a) {
 // Wait for all the work to be termined
 void worker_join() {
     pthread_mutex_lock(&worker_mutex);
-    pthread_cond_wait(&worker_join_cond, &worker_mutex);
+    if(busy_threads)
+        pthread_cond_wait(&worker_join_cond, &worker_mutex);
     pthread_mutex_unlock(&worker_mutex);
 }
 

@@ -72,10 +72,10 @@ int main(int argc, char **argv) {
 	
 	// Options (NULL terminated)
 	struct option options[] = {
-		{ "foo", foo },
-		{ "bar", bar },
-		{ "show", show_robots },
-		{ "send", send_command_robots },
+		{ "foo", action_foo },
+		{ "bar", action_bar },
+		{ "show", action_show_robots },
+		{ "send", action_robots_send_cmd },
 		{ NULL, NULL }
 	};
 	

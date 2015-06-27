@@ -51,7 +51,7 @@ static int robot_search_id(int *id, robot *r) {
 	return 0;
 }
 
-void show_robots(int argc, char* argv[]) {
+void action_show_robots(int argc, char* argv[]) {
 	
 	unsigned int id = 0;
 	
@@ -85,7 +85,7 @@ void show_robots(int argc, char* argv[]) {
     pthread_mutex_unlock(&robot_mutex);
 }
 
-void robot_send_cmd_action(void** values) {
+static void robot_send_cmd_handler(void **values) {
 	robot *r = (robot*) values[0];
 	char **argv = (char**) values[1];
 	char buf[512] = {0};
@@ -94,14 +94,14 @@ void robot_send_cmd_action(void** values) {
 	free(values);
 	
 	// Send all the part of the arguments
-	if(!write(r->sock, "do ", 3))
+	if(!write(r->sock, "do", 2))
 		goto error;
 	
 	while(argv[i]) {
-		if(i) {
-			if(!write(r->sock, " ", 1))
-				goto error;
-		}
+		printw(">>> %s \n", argv[i]);
+		
+		if(!write(r->sock, " ", 1))
+			goto error;
 				
 		if(!write(r->sock, argv[i], strlen(argv[i])))
 			goto error;
@@ -116,25 +116,29 @@ void robot_send_cmd_action(void** values) {
 	if(!read(r->sock, buf, 512))
 		goto error;
 		
+	printf(">%s", buf);
+	return;
+		
 	error:
 		printw("\nAn error occured :(\n");
+		perror("Error : ");
 		// TODO
 }
 
-void robot_send_cmd(robot* r, char **argv) {
+static void robot_send_cmd(robot* r, char **argv) {
 	action a;
 	void** values = malloc(sizeof(void*) * 2);
 	
 	values[0] = r;
 	values[1] = argv;
 	
-	a.perform = (worker_action) robot_send_cmd_action;
+	a.perform = (worker_action) robot_send_cmd_handler;
 	a.args = (void*) values;
 
 	worker_add(&a);
 }
 
-void send_command_robots(int argc, char **argv) {
+void action_robots_send_cmd(int argc, char **argv) {
 	
 	unsigned int id = 0;
 	
@@ -156,13 +160,15 @@ void send_command_robots(int argc, char **argv) {
 	if(id) {
 		robot* r = list_find(&robots, &id, (int (*)(void *, void *))robot_search_id);
 		
-		if(!r) {
+		if(!r)
 			printw("[x] Error : no robot with id %d found\n", id);
-		} else {
+		else
 			robot_send_cmd(r, argv + 1);
-		}
 	} else {
-		list_each(&robots, argv + 1, (void (*)(void *, void *))robot_send_cmd);
+		if(robots.length > 0)
+			list_each(&robots, argv + 1, (void (*)(void *, void *))robot_send_cmd);
+		else
+			printw("[x] Error : no robots connected\n");
 	}
     pthread_mutex_unlock(&robot_mutex);
 	worker_join();
@@ -170,7 +176,7 @@ void send_command_robots(int argc, char **argv) {
 }
 
 // Test handler for foo command
-void foo(int argc, char **argv) {
+void action_foo(int argc, char **argv) {
 	printw("[i] foo\n[i] arguments : \n");
 	int i = 0;
 	
@@ -180,7 +186,7 @@ void foo(int argc, char **argv) {
 }
 
 // Test handler for bar command
-void bar(int argc, char **argv) {
+void action_bar(int argc, char **argv) {
 	printw("[i] bar\n[i] arguments : \n");
 	int i = 0;
 	
