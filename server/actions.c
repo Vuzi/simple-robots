@@ -85,12 +85,57 @@ void show_robots(int argc, char* argv[]) {
     pthread_mutex_unlock(&robot_mutex);
 }
 
-static void send_command_robot(robot *r, char **params) {
-	// TODO	
+void robot_send_cmd_action(void** values) {
+	robot *r = (robot*) values[0];
+	char **argv = (char**) values[1];
+	char buf[512] = {0};
+	int i = 0;
+	
+	free(values);
+	
+	// Send all the part of the arguments
+	if(!write(r->sock, "do ", 3))
+		goto error;
+	
+	while(argv[i]) {
+		if(i) {
+			if(!write(r->sock, " ", 1))
+				goto error;
+		}
+				
+		if(!write(r->sock, argv[i], strlen(argv[i])))
+			goto error;
+		
+		i++;
+	}
+	
+	if(!write(r->sock, "\n", 1))
+		goto error;
+	
+	// Read the response 'done'
+	if(!read(r->sock, buf, 512))
+		goto error;
+		
+	error:
+		printw("\nAn error occured :(\n");
+		// TODO
 }
 
-void send_command_robots(int argc, char *argv[]) {
-	/*
+void robot_send_cmd(robot* r, char **argv) {
+	action a;
+	void** values = malloc(sizeof(void*) * 2);
+	
+	values[0] = r;
+	values[1] = argv;
+	
+	a.perform = (worker_action) robot_send_cmd_action;
+	a.args = (void*) values;
+
+	worker_add(&a);
+}
+
+void send_command_robots(int argc, char **argv) {
+	
 	unsigned int id = 0;
 	
 	if(argc < 2) {
@@ -110,13 +155,22 @@ void send_command_robots(int argc, char *argv[]) {
     pthread_mutex_lock(&robot_mutex);
 	if(id) {
 		robot* r = list_find(&robots, &id, (int (*)(void *, void *))robot_search_id);
-	} else
-		list_each(&robots, argv, (void (*)(void *, void *))send_command_robot);
-    pthread_mutex_unlock(&robot_mutex);*/
+		
+		if(!r) {
+			printw("[x] Error : no robot with id %d found\n", id);
+		} else {
+			robot_send_cmd(r, argv + 1);
+		}
+	} else {
+		list_each(&robots, argv + 1, (void (*)(void *, void *))robot_send_cmd);
+	}
+    pthread_mutex_unlock(&robot_mutex);
+	worker_join();
+	
 }
 
 // Test handler for foo command
-void foo(int argc, char* argv[]) {
+void foo(int argc, char **argv) {
 	printw("[i] foo\n[i] arguments : \n");
 	int i = 0;
 	
@@ -126,7 +180,7 @@ void foo(int argc, char* argv[]) {
 }
 
 // Test handler for bar command
-void bar(int argc, char* argv[]) {
+void bar(int argc, char **argv) {
 	printw("[i] bar\n[i] arguments : \n");
 	int i = 0;
 	

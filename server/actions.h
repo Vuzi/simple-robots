@@ -4,10 +4,14 @@
 #include<stdio.h>
 #include<string.h>
 #include<stdlib.h>
+#include<sys/socket.h>
+#include<arpa/inet.h>
+#include<unistd.h>
 #include<ncurses.h>
 
 #include "server.h"
 #include "robot.h"
+#include "workers.h"
 
 // Handler option
 struct option {

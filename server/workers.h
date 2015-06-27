@@ -18,6 +18,8 @@ struct action {
 
 typedef struct action action;
 
+typedef void(*worker_action)(void*);
+
 // -- Prototypes
 void worker_init();
 void worker_add(action* a);
