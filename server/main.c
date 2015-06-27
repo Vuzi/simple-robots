@@ -101,7 +101,7 @@ void handle_command(char* command, const struct option *options) {
 	
 	i = 0;
 	while(options[i].option) {
-		if(strstr(argv[0], options[i].option)) {
+		if(!strcmp(argv[0], options[i].option)) {
 			options[i].action(argc - 1, argv + 1);
 			return;
 		}
@@ -164,7 +164,8 @@ int main(int argc, char** argv) {
 		{ "foo", foo },
 		{ "bar", bar },
 		{ "show", show_robots },
-		{ NULL, NULL },
+		{ "send", send_command_robot },
+		{ NULL, NULL }
 	};
 	
 	while(1) {
