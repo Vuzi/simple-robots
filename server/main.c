@@ -20,30 +20,82 @@ pthread_mutex_t robot_mutex; // Robot list mutex
 int port = 8080;
 
 // -- Prototype
-static void* server_handler(void* unused);
-static void action_connect(void* val);
+static void* server_handler(void *unused);
+static void action_connect(void *val);
 
 // -- Handlers
-void show_robot(robot *r, void* unused) {
+void show_robot(robot *r, void *unused) {
 	printw("[>] %i > %s\n", r->id, r->hostname);
 }
 
-void show_robots(int argc, char* argv[]) {
-    pthread_mutex_lock(&robot_mutex);
-	printw("[i] Robots connected : \n");
-	list_each(&robots, NULL, (void (*)(void *, void *))show_robot);
-    pthread_mutex_unlock(&robot_mutex);
-	printw("[i] ------------------ \n");
+int robot_search_id(int *id, robot *r) {
+	if(r->id == *id)
+		return 1;
+	return 0;
 }
 
-void send_command_robot(robot *r, char** params) {
+void show_robots(int argc, char* argv[]) {
+	
+	unsigned int id = 0;
+	
+	if(argc >= 1) {
+		if(strcmp("all", argv[0])) {
+			id = atoi(argv[0]);
+			
+			if(!id) {
+				printw("[x] Error : Invalid ID\n");
+				return;
+			}
+		}
+	}
+	
+    pthread_mutex_lock(&robot_mutex);
+	if(!id) {
+		printw("[i] Robots connected : \n");
+		list_each(&robots, NULL, (void (*)(void *, void *))show_robot);
+		printw("[i] ------------------ \n");
+	} else {
+		robot* r = list_find(&robots, &id, (int (*)(void *, void *))robot_search_id);
+		if(!r) {
+			printw("[x] Error : no robot with id %d found\n", id);
+		} else {
+			printw("[i] Robot %d : \n", id);
+			printw("[i] id : %d \n", r->id);
+			printw("[i] hostname : %s \n", r->hostname);
+			printw("[i] ------------------ \n");
+		}
+	}
+    pthread_mutex_unlock(&robot_mutex);
+}
+
+void send_command_robot(robot *r, char **params) {
 	// TODO	
 }
 
-void send_command_robots(int argc, char* argv[]) {
+void send_command_robots(int argc, char *argv[]) {
+	/*
+	unsigned int id = 0;
+	
+	if(argc < 2) {
+		printw("[x] Error : not enough arguments sended\n");
+		return;
+	}
+	
+	if(strcmp("all", argv[0])) {
+		id = atoi(argv[0]);
+		
+		if(!id) {
+			printw("[x] Error : Invalid ID\n");
+			return;
+		}
+	}
+			
     pthread_mutex_lock(&robot_mutex);
-	list_each(&robots, argv, (void (*)(void *, void *))send_command_robot);
-    pthread_mutex_unlock(&robot_mutex);
+	if(id) {
+		robot* r = list_find(&robots, &id, (int (*)(void *, void *))robot_search_id);
+	} else
+		list_each(&robots, argv, (void (*)(void *, void *))send_command_robot);
+    pthread_mutex_unlock(&robot_mutex);*/
 }
 
 // Test handler for foo command
@@ -164,7 +216,7 @@ int main(int argc, char** argv) {
 		{ "foo", foo },
 		{ "bar", bar },
 		{ "show", show_robots },
-		{ "send", send_command_robot },
+		{ "send", send_command_robots },
 		{ NULL, NULL }
 	};
 	

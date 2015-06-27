@@ -25,6 +25,7 @@ void list_init(list* l);
 void list_append(list* l, void* data);
 void list_push(list* l, void* data);
 void list_each(list* l, void* args, void(*func)(void*, void*));
+void* list_find(list* l, void* args, int(*test)(void*, void*));
 void* list_pop(list* l);
 void* list_pop_last(list* l);
 void list_clear(list* l, void(*func)(void*));

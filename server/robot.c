@@ -12,7 +12,7 @@ robot* robot_new(int sock, const struct sockaddr_in* sock_info) {
 
 // Create and init a new robot
 void robot_init(robot* r, int sock, const struct sockaddr_in* sock_info) {
-    static unsigned int id = 0;
+    static unsigned int id = 1;
     
     if(!r)
         return;

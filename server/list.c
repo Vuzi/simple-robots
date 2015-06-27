@@ -65,6 +65,21 @@ void list_each(list* l, void* args, void(*func)(void*, void*)) {
 	}
 }
 
+// Apply the provided method to every element of the list. When the
+// test method return a true result (!= 0) the element is returned.
+// If no result could be found, NULL is returned
+void* list_find(list* l, void* args, int(*test)(void*, void*)) {
+	node* it = l->nodes;
+	
+	while(it) {
+		if(test(args, it->data))
+			return it->data;
+		NEXT(it);
+	}
+	
+	return NULL;
+}
+
 // Remove the first element of the list, and return its value. Note that if the list
 // is empty, NULL will be returned (same if the first element contains a NULL value)
 void* list_pop(list* l) {
