@@ -6,6 +6,7 @@
 #include<unistd.h>
 #include<pthread.h>
 #include<ncurses.h>
+#include <getopt.h>
 
 #include "server.h"
 #include "robot.h"
@@ -20,6 +21,8 @@
 
 // TODO : client
 
+#define VERSION "0.01"
+
 int port = 8080;
 
 list robots;                 // List of robots
@@ -30,7 +33,11 @@ worker_pool connection_pool, action_pool; // Pool of workers
 // -- Prototype
 static void* server_handler(void *unused);
 static void action_connect(void *val);
-
+static void parse_options(int argc, char **argv);
+static void show_version();
+static void show_informations();
+static void show_help();
+static void show_usages();
 
 // -- Functions
 // Init ncurses
@@ -47,13 +54,8 @@ WINDOW* ncurses_init() {
 // Entry point
 int main(int argc, char **argv) {
 	
-	// TODO : args handling
-	// help
-	// version
-	// port
-	// verbose
-	if(argv[1] != NULL)
-		port = atoi(argv[1]);
+	// Arguments handling with getopt_long
+	parse_options(argc, argv);
 	
 	// Init ncurses
 	WINDOW *w = ncurses_init();
@@ -71,7 +73,7 @@ int main(int argc, char **argv) {
     pthread_t thread;
 	if(pthread_create(&thread, NULL, server_handler, NULL) < 0) {
         printw("[x] Could not create server thread : ");
-        return 1;
+        return EXIT_FAILURE;
 	}
 
 	// Show greetings
@@ -85,7 +87,7 @@ int main(int argc, char **argv) {
 	char buffer[BUFFER_SIZE] = { 0 };
 	
 	// Options (NULL terminated)
-	struct option options[] = {
+	struct server_option options[] = {
 		{ "show",  action_robots_show },
 		{ "close", action_robots_close },
 		{ "send",  action_robots_send_cmd },
@@ -169,7 +171,7 @@ int main(int argc, char **argv) {
 	worker_quit(&connection_pool);
 	worker_quit(&action_pool);
 	
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 // Connection handler
@@ -274,3 +276,77 @@ static void* server_handler(void* w) {
 	
 	return NULL;
 }
+
+// Handle the option parsing with getopt_long
+void parse_options(int argc, char** argv){
+	int opt = 0;
+	
+	//Specify the expected options
+    static struct option long_options[] = {        
+        {"version",		no_argument,		NULL,  	'v' },
+        {"informations",no_argument, 		NULL,	'i' },
+		{"help",		no_argument,       	NULL,  	'h' },
+        {"port",		required_argument, 	NULL,  	'p' },
+        {NULL,          0,                  NULL,   0   }
+    };
+		
+	int long_index = 0;
+    while ((opt = getopt_long(argc, argv, "vihp:", long_options, &long_index	)) != -1) {
+        switch (opt) {
+             case 'v' : show_version();
+                 exit(EXIT_SUCCESS);
+             case 'i' : show_informations();
+                 exit(EXIT_SUCCESS);
+             case 'h' : show_help();
+                 exit(EXIT_SUCCESS);
+             case 'p' : port = atoi(optarg);
+                 break;
+             default: show_usages();
+			 	exit(EXIT_FAILURE);	
+        }
+    }
+}
+
+// Print the server version
+static void show_version(){
+	printf("robot_server v%s\nCompiled at %s %s\n", VERSION, __TIME__, __DATE__);
+	printf("\nWritten by Vuzi & Dimitri\n");
+	printf("See https://github.com/Vuzi/SimpleRobots for more informations\n");
+}
+
+// Print the server informations
+static void show_informations(){
+	printf("No informations yet.");
+}
+
+// Display help about the server commands
+static void show_help(){
+	puts("robot_server\n");
+	
+	puts("usage : ");
+	puts("\trobot_server [-v|--version] [-i|--information] [-h|--help] [-p|--port {port_number}]");
+	
+	puts("\nOptions : ");
+	puts("--version\t-v");
+	puts("\tShow the server version.\n");
+	
+	puts("--informations\t-i");	
+	puts("\tShow the server informations.\n");
+	
+	puts("--help\t-h");
+	puts("\tDisplay help.\n");
+	
+	puts("--p\t-p\t{port}");
+	puts("\tAllow to set the port to use. Set by default to 8080.\n");
+	
+	show_version();
+}
+
+// Print usages of the application
+static void show_usages(){
+	puts("usage : ");
+	puts("\trobot_server [-v|--version] [-i|--information] [-h|--help] [-p|--port {port_number}]");
+	puts("\tTry --help for more informations");
+}
+
+

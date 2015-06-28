@@ -15,12 +15,12 @@
 #include "workers.h"
 
 // Handler option
-struct option {
+struct server_option {
 	char* option;
 	void (*action)(int, char**);
 };
 
-void handle_command(char* command, const struct option *options);
+void handle_command(char* command, const struct server_option *options);
 
 void action_robots_show(int argc, char **argv);
 void action_robots_send_cmd(int argc, char **argv);

@@ -8,7 +8,7 @@ static void robot_show(robot *r, void *unused);
 static void robot_close(robot *r);
 
 // Handle a specified command with the given command and options
-void handle_command(char* command, const struct option *options) {
+void handle_command(char* command, const struct server_option *options) {
 	int i = 0, in_value = 0, argc = 0;
 	char* argv[32] = { NULL };
 	
