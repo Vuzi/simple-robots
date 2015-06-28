@@ -4,7 +4,7 @@ static void robot_send_cmd_handler(void **values);
 static void robot_send_cmd(robot* r, char **argv);
 
 // Handle a specified command with the given command and options
-void handle_command(char* command, const struct option *options) {
+void handle_command(char* command, const struct server_option *options) {
 	int i = 0, in_value = 0, argc = 0;
 	char* argv[32] = { NULL };
 	

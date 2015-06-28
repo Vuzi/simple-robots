@@ -6,6 +6,7 @@
 #include<unistd.h>
 #include<pthread.h>
 #include<ncurses.h>
+#include <getopt.h>
 
 #include "server.h"
 #include "robot.h"
@@ -29,7 +30,11 @@ worker_pool connection_pool, action_pool; // Pool of workers
 // -- Prototype
 static void* server_handler(void *unused);
 static void action_connect(void *val);
-
+static void parse_options(int argc, char **argv);
+static void show_version();
+static void show_informations();
+static void show_help();
+static void show_usages();
 
 // -- Functions
 // Init ncurses
@@ -45,14 +50,8 @@ WINDOW* ncurses_init() {
 
 // Entry point
 int main(int argc, char **argv) {
-	
-	// TODO : args handling
-	// help
-	// version
-	// port
-	// verbose
-	if(argv[1] != NULL)
-		port = atoi(argv[1]);
+	// Arguments handling with getopt_long
+	parse_options(argc, argv);
 	
 	// Init ncurses
 	WINDOW *w = ncurses_init();
@@ -84,7 +83,7 @@ int main(int argc, char **argv) {
 	char buffer[BUFFER_SIZE] = { 0 };
 	
 	// Options (NULL terminated)
-	struct option options[] = {
+	struct server_option options[] = {
 		{ "foo", action_foo },
 		{ "bar", action_bar },
 		{ "show", action_show_robots },
@@ -274,3 +273,73 @@ static void* server_handler(void* w) {
 	
 	return NULL;
 }
+
+// Handle the option parsing with getopt_long
+void parse_options(int argc, char** argv){
+	int opt = 0;
+	
+	//Specify the expected options
+    static struct option long_options[] = {        
+        {"version",		no_argument,		NULL,  	'v' },
+        {"informations",no_argument, 		NULL,	'i' },
+		{"help",		no_argument,       	NULL,  	'h' },
+        {"port",		required_argument, 	NULL,  	'p' },
+        {0,           	0,                 	0, 		 0	}
+    };
+		
+	int long_index = 0;
+    while ((opt = getopt_long(argc, argv, "vihp:", long_options, &long_index )) != -1) {
+        switch (opt) {
+             case 'v' : show_version();
+                 exit(0);
+             case 'i' : show_informations();
+                 exit(0);
+             case 'h' : show_help();
+                 exit(0);
+             case 'p' : port = atoi(optarg);
+                 break;
+             default: show_usages();
+			 	exit(EXIT_FAILURE);	
+        }
+    }
+}
+
+// Print the server version
+static void show_version(){
+	printf("------------------VERSION-------------------\n");
+	printf("0.1\n");
+	printf("--------------------------------------------\n");
+}
+
+// Print the server informations
+static void show_informations(){
+	printf("----------------INFORMATIONS----------------\n");
+	printf("No informations yet.");
+	printf("--------------------------------------------\n");
+}
+
+// Display help about the server commands
+static void show_help(){
+	printf("--------------------HELP--------------------\n");
+	printf("--version\t-v\n");
+	printf("\tShow the server version.\n\n");
+	
+	printf("--informations\t-i\n");	
+	printf("\tShow the server informations.\n\n");
+	
+	printf("--help\t-h\n");
+	printf("\tDisplay help.\n\n");
+	
+	printf("--p\t-p\t{argument}\n");
+	printf("\tAllow to set the port to use. Set by default at 8080.\n\n");
+	printf("--------------------------------------------\n");
+}
+
+// Print usages of the application
+static void show_usages(){
+	printf("-------------------USAGES-------------------\n");
+	printf("robot_server [-v|--version] [-i|--information] [-h|--help] [-p|--port {port_number}]\n");
+	printf("---------------------------------------------\n");
+}
+
+
