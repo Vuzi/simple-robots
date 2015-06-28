@@ -156,7 +156,12 @@ static int get_robot_id(unsigned int *id, int argc, char* argv[]) {
 	return 1; // Error
 }
 
+// Close a connection and delete the robot
 static void robot_close(robot *r) {
+	//  Try to say goodbye
+	send(r->sock, "goodbye\n", 8, MSG_NOSIGNAL);
+	
+	// Close & free
 	close(r->sock);
 	list_remove(&robots, &(r->id), (int (*)(void *, void *))robot_search_id, free);
 }
@@ -220,25 +225,4 @@ static void robot_send_cmd_handler(void **values) {
     	pthread_mutex_lock(&robot_mutex);
 		list_remove(&robots, &(r->id), (int (*)(void *, void *))robot_search_id, free);
     	pthread_mutex_unlock(&robot_mutex);
-}
-
-
-// Test handler for foo command
-void action_foo(int argc, char **argv) {
-	printw("[i] foo\n[i] arguments : \n");
-	int i = 0;
-	
-	while(argv[i]) {
-		printw("\t'%s'\n", argv[i++]);
-	}
-}
-
-// Test handler for bar command
-void action_bar(int argc, char **argv) {
-	printw("[i] bar\n[i] arguments : \n");
-	int i = 0;
-	
-	while(argv[i]) {
-		printw("\t'%s'\n", argv[i++]);
-	}
 }
