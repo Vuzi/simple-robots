@@ -14,6 +14,7 @@
 #include "actions.h"
 
 // TODO : gestion arguments
+//        quit
 //        download file
 //        upload file ?
 
@@ -85,11 +86,12 @@ int main(int argc, char **argv) {
 	
 	// Options (NULL terminated)
 	struct option options[] = {
-		{ "foo", action_foo },
-		{ "bar", action_bar },
-		{ "show", action_show_robots },
-		{ "send", action_robots_send_cmd },
-		{ NULL, NULL }
+		{ "foo",   action_foo },
+		{ "bar",   action_bar },
+		{ "show",  action_robots_show },
+		{ "close", action_robots_close },
+		{ "send",  action_robots_send_cmd },
+		{ NULL,    NULL }
 	};
 	
 	while(1) {

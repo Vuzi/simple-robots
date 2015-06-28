@@ -1,7 +1,11 @@
 #include "actions.h"
 
+static int get_robot_id(unsigned int *id, int argc, char* argv[]);
+
 static void robot_send_cmd_handler(void **values);
 static void robot_send_cmd(robot* r, char **argv);
+static void robot_show(robot *r, void *unused);
+static void robot_close(robot *r);
 
 // Handle a specified command with the given command and options
 void handle_command(char* command, const struct option *options) {
@@ -43,32 +47,21 @@ void handle_command(char* command, const struct option *options) {
 	printw("[i] Unkown command : %s\n", argv[0]);
 }
 
-// -- Handlers
-// Show informations about a given robot
-static void show_robot(robot *r, void *unused) {
-	printw("[>] %i > %s\n", r->id, r->hostname);
-}
-
+// -- Actions
 // Show informations about all the robots, or a specified robot
-void action_show_robots(int argc, char* argv[]) {
+void action_robots_show(int argc, char* argv[]) {
 	
 	unsigned int id = 0;
 	
-	if(argc >= 1) {
-		if(strcmp("all", argv[0])) {
-			id = atoi(argv[0]);
-			
-			if(!id) {
-				printw("[x] Error : Invalid ID\n");
-				return;
-			}
-		}
+	if(argc > 0) {
+		if(get_robot_id(&id, argc, argv))
+			return; // No ID
 	}
 	
     pthread_mutex_lock(&robot_mutex);
 	if(!id) {
 		printw("[i] Robots connected : \n");
-		list_each(&robots, NULL, (void (*)(void *, void *))show_robot);
+		list_each(&robots, NULL, (void (*)(void *, void *))robot_show);
 		printw("[i] ------------------ \n");
 	} else {
 		robot* r = list_find(&robots, &id, (int (*)(void *, void *))robot_search_id);
@@ -84,6 +77,29 @@ void action_show_robots(int argc, char* argv[]) {
     pthread_mutex_unlock(&robot_mutex);
 }
 
+// Close a specified robot, or all
+void action_robots_close(int argc, char **argv) {
+	unsigned int id = 0;
+	
+	if(get_robot_id(&id, argc, argv))
+		return; // No ID
+	
+    pthread_mutex_lock(&robot_mutex);
+	if(!id) {
+		printw("[i] Closing all robots\n");
+		list_each(&robots, NULL, (void (*)(void *, void *))robot_close);
+	} else {
+		robot* r = list_find(&robots, &id, (int (*)(void *, void *))robot_search_id);
+		if(!r) {
+			printw("[x] Error : no robot with id %d found\n", id);
+		} else {
+			printw("[i] Closing robot %s (%d)\n", r->hostname, r->id);
+			robot_close(r);
+		}
+	}
+    pthread_mutex_unlock(&robot_mutex);
+}
+
 // Send a specified command to all the robots, or to a specified robot
 void action_robots_send_cmd(int argc, char **argv) {
 	
@@ -94,14 +110,8 @@ void action_robots_send_cmd(int argc, char **argv) {
 		return;
 	}
 	
-	if(strcmp("all", argv[0])) {
-		id = atoi(argv[0]);
-		
-		if(!id) {
-			printw("[x] Error : Invalid ID\n");
-			return;
-		}
-	}
+	if(get_robot_id(&id, argc, argv))
+		return; // No ID
 	
 	printw("[i] Sending command(s)...\n");
 	refresh();
@@ -122,6 +132,38 @@ void action_robots_send_cmd(int argc, char **argv) {
 	}
     pthread_mutex_unlock(&robot_mutex);
 	worker_join(&action_pool);
+}
+
+// -- Handlers
+// Get from the first argument the ID. Return 0 if the ID is valid, 1 otherwise
+static int get_robot_id(unsigned int *id, int argc, char* argv[]) {
+	
+	if(argc >= 1) {
+		if(strcmp("all", argv[0])) {
+			*id = atoi(argv[0]);
+			
+			if(!(*id)) {
+				printw("[x] Error : Invalid ID\n");
+				return 1;
+			}
+			
+			return 0; // Specified
+		} else
+			return 0; // All
+	}
+	
+	printw("[x] Error : No ID provided\n");
+	return 1; // Error
+}
+
+static void robot_close(robot *r) {
+	close(r->sock);
+	list_remove(&robots, &(r->id), (int (*)(void *, void *))robot_search_id, free);
+}
+
+// Show informations about a given robot
+static void robot_show(robot *r, void *unused) {
+	printw("[>] %i > %s\n", r->id, r->hostname);
 }
 
 // Send the given action to the given robot, using the worker pool

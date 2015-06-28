@@ -22,9 +22,10 @@ struct option {
 
 void handle_command(char* command, const struct option *options);
 
-void action_show_robots(int argc, char* argv[]);
-void action_robots_send_cmd(int argc, char *argv[]);
-void action_foo(int argc, char* argv[]);
-void action_bar(int argc, char* argv[]);
+void action_robots_show(int argc, char **argv);
+void action_robots_send_cmd(int argc, char **argv);
+void action_robots_close(int argc, char **argv);
+void action_foo(int argc, char **argv);
+void action_bar(int argc, char **argv);
 
 #endif
