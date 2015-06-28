@@ -10,7 +10,7 @@ robot* robot_new(int sock, const struct sockaddr_in* sock_info) {
     return r;
 }
 
-// Create and init a new robot
+// Init a new robot
 void robot_init(robot* r, int sock, const struct sockaddr_in* sock_info) {
     static unsigned int id = 1;
     
@@ -21,4 +21,10 @@ void robot_init(robot* r, int sock, const struct sockaddr_in* sock_info) {
 	r->sock = sock;
     if(sock_info)
         r->sock_info = *sock_info; // To test
+}
+
+int robot_search_id(int *id, robot *r) {
+	if(r->id == *id)
+		return 1;
+	return 0;
 }

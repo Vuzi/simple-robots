@@ -80,6 +80,29 @@ void* list_find(list* l, void* args, int(*test)(void*, void*)) {
 	return NULL;
 }
 
+void list_remove(list* l, void* args, int(*test)(void*, void*), void(*func)(void*)) {
+	node* it = l->nodes;
+	node* prev = NULL;
+	
+	while(it) {
+		node* tmp = it;
+		NEXT(it);
+		
+		// Test if element should be deleted
+		if(test(args, tmp->data)) {
+			if(func) // Custom free
+				func(tmp->data);
+			free(tmp);
+			
+			if(prev)
+				prev->next = it;
+			else
+				l->nodes = it;
+		} else
+			prev = tmp;
+	}
+}
+
 // Remove the first element of the list, and return its value. Note that if the list
 // is empty, NULL will be returned (same if the first element contains a NULL value)
 void* list_pop(list* l) {

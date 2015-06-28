@@ -13,10 +13,18 @@
 #include "workers.h"
 #include "actions.h"
 
+// TODO : gestion arguments
+//        download file
+//        upload file ?
+
+// TODO : client
+
 int port = 8080;
 
 list robots;                 // List of robots
 pthread_mutex_t robot_mutex; // Robot list mutex
+
+worker_pool connection_pool, action_pool; // Pool of workers
 
 // -- Prototype
 static void* server_handler(void *unused);
@@ -39,6 +47,10 @@ WINDOW* ncurses_init() {
 int main(int argc, char **argv) {
 	
 	// TODO : args handling
+	// help
+	// version
+	// port
+	// verbose
 	if(argv[1] != NULL)
 		port = atoi(argv[1]);
 	
@@ -50,8 +62,9 @@ int main(int argc, char **argv) {
 	list_init(&robots);
     pthread_mutex_init(&robot_mutex, NULL);
 	
-	// Init workers
-	worker_init();
+	// Init workers pools
+	worker_init(&connection_pool);
+	worker_init(&action_pool);
 	
 	// Init the server's listener thread
     pthread_t thread;
@@ -140,6 +153,9 @@ int main(int argc, char **argv) {
 		    }
 		}
 		
+		if(!strcmp(buffer, "quit"))
+			goto end;
+			
 		handle_command(buffer, options);
 	}
 	
@@ -150,7 +166,8 @@ int main(int argc, char **argv) {
 	endwin();
 	
 	// Stop all the workers
-	worker_quit();
+	worker_quit(&connection_pool);
+	worker_quit(&action_pool);
 	
 	return 0;
 }
@@ -164,9 +181,8 @@ static void action_connect(void* val) {
 	char buf[NET_BUFFER_SIZE] = {0};
 	
 	// Read the greeting from the client
-	if(!(n = read(r->sock, buf, NET_BUFFER_SIZE - 1))) {
+	if((n = read(r->sock, buf, NET_BUFFER_SIZE - 1)) <= 0)
 		goto error;
-	}
 	buf[n--] = '\0';
 	
 	while(n && ( buf[n] == '\n' || buf[n] == '\r' || buf[n] == ' ')) // Trim
@@ -179,17 +195,17 @@ static void action_connect(void* val) {
 	
 	// Send ID
 	snprintf(buf, NET_BUFFER_SIZE, "hello %u\n", r->id);
-	write(r->sock, buf, strlen(buf));
+	if(send(r->sock, buf, strlen(buf), MSG_EOR|MSG_NOSIGNAL) <= 0)
+		goto error;
 	
 	// Read "ready"
-	if(!(n = read(r->sock, buf, NET_BUFFER_SIZE - 1))) {
+	if((n = read(r->sock, buf, NET_BUFFER_SIZE - 1)) <= 0)
 		goto error;
-	}
+	
 	buf[n] = '\0';
 	
-	if(strncmp("ready", buf, 5)) {
+	if(strncmp("ready", buf, 5))
 		goto error; // Not ready
-	}
 	
 	// Robot OK : add to the list
     pthread_mutex_lock(&robot_mutex);
@@ -245,7 +261,7 @@ static void* server_handler(void* w) {
 		a.perform = action_connect;
 		a.args = (void*) robot_new(socket_client_desc, &client);
 
-		worker_add(&a);
+		worker_add(&connection_pool, &a);
 
 		// Reset the value
 		size = (socklen_t) sizeof(client);
@@ -258,4 +274,3 @@ static void* server_handler(void* w) {
 	
 	return NULL;
 }
-

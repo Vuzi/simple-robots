@@ -18,8 +18,8 @@
 // Worker info
 struct worker_info {
 	struct worker_pool *info;  // Info about the pool
-	pthread_t thread;  // Info about the thread
-	long unsigned id;   // ID
+	pthread_t thread;          // Info about the thread
+	long unsigned id;          // ID
 };
 
 // Pool of workers

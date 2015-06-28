@@ -1,5 +1,8 @@
 #include "actions.h"
 
+static void robot_send_cmd_handler(void **values);
+static void robot_send_cmd(robot* r, char **argv);
+
 // Handle a specified command with the given command and options
 void handle_command(char* command, const struct option *options) {
 	int i = 0, in_value = 0, argc = 0;
@@ -41,16 +44,12 @@ void handle_command(char* command, const struct option *options) {
 }
 
 // -- Handlers
+// Show informations about a given robot
 static void show_robot(robot *r, void *unused) {
 	printw("[>] %i > %s\n", r->id, r->hostname);
 }
 
-static int robot_search_id(int *id, robot *r) {
-	if(r->id == *id)
-		return 1;
-	return 0;
-}
-
+// Show informations about all the robots, or a specified robot
 void action_show_robots(int argc, char* argv[]) {
 	
 	unsigned int id = 0;
@@ -85,56 +84,7 @@ void action_show_robots(int argc, char* argv[]) {
     pthread_mutex_unlock(&robot_mutex);
 }
 
-static void robot_send_cmd_handler(void **values) {
-	robot *r = (robot*) values[0];
-	char **argv = (char**) values[1];
-	char buf[512] = {0};
-	int i = 0;
-	
-	free(values);
-	
-	// Send all the part of the arguments
-	if(!write(r->sock, "do", 2))
-		goto error;
-	
-	while(argv[i]) {
-		if(!write(r->sock, " ", 1))
-			goto error;
-				
-		if(!write(r->sock, argv[i], strlen(argv[i])))
-			goto error;
-		
-		i++;
-	}
-	
-	if(!write(r->sock, "\n", 1))
-		goto error;
-	
-	// Read the response 'done'
-	if(!read(r->sock, buf, 512))
-		goto error;
-	
-	return;
-		
-	error:
-		printw("\nAn error occured :(\n");
-		perror("Error : ");
-		// TODO
-}
-
-static void robot_send_cmd(robot* r, char **argv) {
-	action a;
-	void** values = malloc(sizeof(void*) * 2);
-	
-	values[0] = r;
-	values[1] = argv;
-	
-	a.perform = (worker_action) robot_send_cmd_handler;
-	a.args = (void*) values;
-
-	worker_add(&a);
-}
-
+// Send a specified command to all the robots, or to a specified robot
 void action_robots_send_cmd(int argc, char **argv) {
 	
 	unsigned int id = 0;
@@ -152,6 +102,9 @@ void action_robots_send_cmd(int argc, char **argv) {
 			return;
 		}
 	}
+	
+	printw("[i] Sending command(s)...\n");
+	refresh();
 			
     pthread_mutex_lock(&robot_mutex);
 	if(id) {
@@ -168,9 +121,65 @@ void action_robots_send_cmd(int argc, char **argv) {
 			printw("[x] Error : no robots connected\n");
 	}
     pthread_mutex_unlock(&robot_mutex);
-	worker_join();
-	
+	worker_join(&action_pool);
 }
+
+// Send the given action to the given robot, using the worker pool
+static void robot_send_cmd(robot* r, char **argv) {
+	
+	action a;
+	void** values = malloc(sizeof(void*) * 2);
+	
+	values[0] = r;
+	values[1] = argv;
+	
+	a.perform = (worker_action) robot_send_cmd_handler;
+	a.args = (void*) values;
+
+	worker_add(&action_pool, &a);
+}
+
+// Send the given action to the given robot
+static void robot_send_cmd_handler(void **values) {
+	robot *r = (robot*) values[0];
+	char **argv = (char**) values[1];
+	char buf[512] = {0};
+	int i = 0;
+	
+	free(values);
+	
+	// Send all the part of the arguments
+	if(send(r->sock, "do", 2, MSG_NOSIGNAL) <= 0)
+		goto error;
+	
+	while(argv[i]) {
+		if(send(r->sock, " ", 1, MSG_NOSIGNAL) <= 0)
+			goto error;
+				
+		if(send(r->sock, argv[i], strlen(argv[i]), MSG_NOSIGNAL) <= 0)
+			goto error;
+		
+		i++;
+	}
+	
+	if(send(r->sock, "\n", 1, MSG_EOR|MSG_NOSIGNAL) <= 0)
+		goto error;
+	
+	// Read the response 'done'
+	if(read(r->sock, buf, 512) <= 0)
+		goto error;
+	
+	return;
+	
+	error:
+		printw("[x] An error occured with %s (%d) : %s\n", r->hostname, r->id, strerror(errno));
+		refresh();
+		
+    	pthread_mutex_lock(&robot_mutex);
+		list_remove(&robots, &(r->id), (int (*)(void *, void *))robot_search_id, free);
+    	pthread_mutex_unlock(&robot_mutex);
+}
+
 
 // Test handler for foo command
 void action_foo(int argc, char **argv) {
