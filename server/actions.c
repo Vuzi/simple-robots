@@ -98,8 +98,6 @@ static void robot_send_cmd_handler(void **values) {
 		goto error;
 	
 	while(argv[i]) {
-		printw(">>> %s \n", argv[i]);
-		
 		if(!write(r->sock, " ", 1))
 			goto error;
 				
@@ -115,8 +113,7 @@ static void robot_send_cmd_handler(void **values) {
 	// Read the response 'done'
 	if(!read(r->sock, buf, 512))
 		goto error;
-		
-	printf(">%s", buf);
+	
 	return;
 		
 	error:

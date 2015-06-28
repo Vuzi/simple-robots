@@ -7,7 +7,7 @@
 #include <pthread.h>
 #include "list.h"
 
-#define WORKER_THREAD_NB 5 // Should be less than 32
+#define WORKER_THREAD_NB 5 // Should be less than 64
 
 #define FLAG_DOWN(flag, pos) (flag &= ~(1 << pos))
 #define FLAG_UP(flag, pos) (flag |= (1 << pos))

@@ -11,14 +11,16 @@ static pthread_cond_t worker_join_cond;     // Actions empty condition
 
 // Worker handler used in each worker thread
 static void* worker_handler(void* val) {
-    long id = (long) id;
+    long id = (long) val;
     
     while(1) {
         pthread_mutex_lock(&worker_mutex);
         
         if(actions.length == 0) {
             FLAG_DOWN(busy_threads, id); // Register as sleeping thread
-            pthread_cond_signal(&worker_join_cond); // Send join signal
+            
+            if(busy_threads == 0x0)
+                pthread_cond_signal(&worker_join_cond); // Send join signal
             
             if(!worker_stop) // No actions, wait
                 pthread_cond_wait(&worker_cond, &worker_mutex);
@@ -28,7 +30,7 @@ static void* worker_handler(void* val) {
         if(worker_stop)
             break;
         
-        // Release mutex, and get the action to perform
+        // Get the action to perform, and release mutex
         action* a = (action*) list_pop(&actions);
         FLAG_UP(busy_threads, id);
         pthread_mutex_unlock(&worker_mutex);
@@ -82,7 +84,7 @@ void worker_add(action* a) {
 // Wait for all the work to be termined
 void worker_join() {
     pthread_mutex_lock(&worker_mutex);
-    if(busy_threads)
+    if(busy_threads || actions.length > 0)
         pthread_cond_wait(&worker_join_cond, &worker_mutex);
     pthread_mutex_unlock(&worker_mutex);
 }
