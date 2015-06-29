@@ -196,14 +196,14 @@ static void robot_send_cmd_handler(void **values) {
 	free(values);
 	
 	// Send all the part of the arguments
-	if(send(r->sock, "do", 2, MSG_NOSIGNAL) <= 0)
+	if(send(r->sock, "do", 2, MSG_MORE|MSG_NOSIGNAL) <= 0)
 		goto error;
 	
 	while(argv[i]) {
-		if(send(r->sock, " ", 1, MSG_NOSIGNAL) <= 0)
+		if(send(r->sock, " ", 1, MSG_MORE|MSG_NOSIGNAL) <= 0)
 			goto error;
 				
-		if(send(r->sock, argv[i], strlen(argv[i]), MSG_NOSIGNAL) <= 0)
+		if(send(r->sock, argv[i], strlen(argv[i]), MSG_MORE|MSG_NOSIGNAL) <= 0)
 			goto error;
 		
 		i++;
