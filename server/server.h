@@ -3,8 +3,12 @@
 
 #include <pthread.h>
 
-#include "list.h"
-#include "workers.h"
+#include <list.h>
+#include <workers.h>
+#include <actions.h>
+
+#include "server_actions.h"
+#include "robot.h"
 
 #define BUFFER_SIZE 1024
 #define NET_BUFFER_SIZE 8196

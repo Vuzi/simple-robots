@@ -15,7 +15,7 @@
 int server_connect(int port, char* addr, char* hostname) {
 	
 	// Create socket
-	int socket_desc = socket(AF_INET, SOCK_STREAM, 0), n = 0;
+	int socket_desc = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in client;
 	char buf[NET_BUFFER_SIZE] = { 0 };
 	
@@ -57,13 +57,13 @@ int server_connect(int port, char* addr, char* hostname) {
 }
 
 // Handle the commands send by the server
-void server_handler(int sock) {
+int server_handler(int sock) {
 	
 	int n = 0;
 	char buf[NET_BUFFER_SIZE] = { 0 };
 	
 	// Read commands
-	while((n = read(socket_desc, buf, NET_BUFFER_SIZE - 1)) > 0) {
+	while((n = read(sock, buf, NET_BUFFER_SIZE - 1)) > 0) {
 		buf[n--] = '\0';
 			
 		while(n && ( buf[n] == '\n' || buf[n] == '\r' || buf[n] == ' ')) // Trim
@@ -74,7 +74,7 @@ void server_handler(int sock) {
 		printf("[i] read : %s\n", buf);
 		
 		// Send done
-		if(send(socket_desc, "done", 4, MSG_EOR|MSG_NOSIGNAL) <= 0) {
+		if(send(sock, "done", 4, MSG_EOR|MSG_NOSIGNAL) <= 0) {
 			perror("[x] Send failed");
 			goto error;
 		}
@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
 			goto error;
 			
 		// Wait and retry
-		puts("[x] Connection faile, trying again in 5s ...");
+		puts("[x] Connection failed, trying again in 5s ...");
 		sleep(5);
 		goto connection;
 	}

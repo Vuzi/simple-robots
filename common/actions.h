@@ -12,6 +12,6 @@ struct command_action {
 	void (*action)(int, char**);
 };
 
-void handle_action(char* command, const struct server_option *options);
+void handle_action(char* command, const struct command_action *options);
 
 #endif

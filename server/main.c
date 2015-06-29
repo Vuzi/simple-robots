@@ -9,11 +9,6 @@
 #include <getopt.h>
 
 #include "server.h"
-#include "robot.h"
-#include "list.h"
-#include "workers.h"
-#include "actions.h"
-#include "server_actions.h"
 
 // TODO : gestion arguments
 //        quit
@@ -88,7 +83,7 @@ int main(int argc, char **argv) {
 	char buffer[BUFFER_SIZE] = { 0 };
 	
 	// Options (NULL terminated)
-	struct server_option options[] = {
+	struct command_action options[] = {
 		{ "show",  action_robots_show },
 		{ "close", action_robots_close },
 		{ "send",  action_robots_send_cmd },
@@ -159,7 +154,7 @@ int main(int argc, char **argv) {
 		if(!strcmp(buffer, "quit"))
 			goto end;
 			
-		handle_command(buffer, options);
+		handle_action(buffer, options);
 	}
 	
 	end:

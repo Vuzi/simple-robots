@@ -1,4 +1,4 @@
-#include "actions.h"
+#include "server_actions.h"
 
 static int get_robot_id(unsigned int *id, int argc, char* argv[]);
 

@@ -1,5 +1,5 @@
-#ifndef ACTIONS_H
-#define ACTIONS_H
+#ifndef SERVER_ACTIONS_H
+#define SERVER_ACTIONS_H
 
 #include <stdio.h>
 #include <string.h>
@@ -11,9 +11,6 @@
 #include <errno.h>
 
 #include "server.h"
-#include "robot.h"
-#include "workers.h"
-#include "actions.h"
 
 // Server specific actions
 void action_robots_show(int argc, char **argv);
