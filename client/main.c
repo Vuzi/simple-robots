@@ -14,6 +14,8 @@
 #define NET_BUFFER_SIZE 2048
 #define MAX_TRY 5
 
+int socket_val;
+
 // -- Prototypes
 void action_do(int argc, char** argv);
 void action_get(int argc, char** argv);
@@ -44,7 +46,23 @@ void action_do(int argc, char** argv) {
 
 // Get a file
 void action_get(int argc, char** argv) {
+	
 	// TODO
+	
+	// Send "ready"
+	if(send(socket_val, "got it\n", 7, MSG_EOR|MSG_NOSIGNAL) <= 0) {
+		perror("[x] Send failed");
+		goto error;
+	}
+	
+	char* test = "Hello world!\nI'm the file content :)";
+	if(send(socket_val, test, strlen(test), MSG_EOR|MSG_NOSIGNAL) <= 0) {
+		perror("[x] Send failed");
+		goto error;
+	}
+	
+	error:
+	return;
 }
 
 // Connect at the specified port to the specified address, using the given hostname as name
@@ -147,7 +165,7 @@ int main(int argc, char** argv) {
 	printf("[i] Computer name : %s\n", hostname);
 	
 	connection:
-	sock = server_connect(port, addr, hostname);
+	socket_val = sock = server_connect(port, addr, hostname);
 	
 	if(sock <= 0) {
 		// If too much tries, go to error

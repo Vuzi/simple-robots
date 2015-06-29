@@ -4,7 +4,9 @@ static int get_robot_id(unsigned int *id, int argc, char* argv[]);
 
 static void robot_send_cmd_handler(void **values);
 static void robot_send_cmd(robot* r, char **argv);
+static void robot_recv_file(robot* r, const char *source, const char *dest);
 static void robot_show(robot *r, void *unused);
+static void robot_error_remove(robot* r);
 static void robot_close(robot *r);
 
 // -- Actions
@@ -35,6 +37,34 @@ void action_robots_show(int argc, char* argv[]) {
 		}
 	}
     pthread_mutex_unlock(&robot_mutex);
+}
+
+// Get a file from the server
+void action_robots_rcv_file(int argc, char **argv) {
+	unsigned int id = 0;
+	
+	if(argc < 3) {
+		printw("[x] Not enough arguments provided\n");
+		printw("[i] Usage : get [id] [source] [destination]\n");
+		return;
+	}
+	
+	if(get_robot_id(&id, argc, argv))
+		return; // No ID
+	
+	if(!id) {
+		printw("[i] File donwload is not possible for all clients, please specify an ID\n");
+	} else {
+    	pthread_mutex_lock(&robot_mutex);
+		robot* r = list_find(&robots, &id, (int (*)(void *, void *))robot_search_id);
+		
+		if(!r)
+			printw("[x] Error : no robot with id %d found\n", id);
+		else
+			robot_recv_file(r, argv[1], argv[2]);
+			
+    	pthread_mutex_unlock(&robot_mutex);
+	}
 }
 
 // Close a specified robot, or all
@@ -179,10 +209,75 @@ static void robot_send_cmd_handler(void **values) {
 	return;
 	
 	error:
-		printw("[x] An error occured with %s (%d) : %s\n", r->hostname, r->id, strerror(errno));
-		refresh();
+		robot_error_remove(r);
+}
+
+static void robot_recv_file(robot* r, const char *source, const char *dest) {
+	
+	// Try to open the destination file
+	FILE* f = fopen(dest, "w");
+	char buf[NET_BUFFER_SIZE] = {0};
+	int n = 0;
+	
+	if(!f) {
+		printw("[x] An error occured with the local file %s : %s\n", r->hostname, r->id, strerror(errno));
+		return;
+	}
+	
+	// Send the command
+	if(send(r->sock, "get ", 4, MSG_MORE|MSG_NOSIGNAL) <= 0)
+		goto error;
+	
+	if(send(r->sock, dest, 4, MSG_EOR|MSG_NOSIGNAL) <= 0)
+		goto error;
+	
+	// Read response
+	if((n = read(r->sock, buf, NET_BUFFER_SIZE - 1)) <= 0)
+		goto error;
+	buf[n] = '\0';
+	
+	printw(buf);
+	
+	if(strncmp(buf, "got it\n", 7)) {
+		// An error occured
+		printw("[x] Error with %s (%d) : %s\n", r->hostname, r->id, buf);
+		goto end;
+	}
+	
+	// Get the file content
+	if(fwrite(buf + 7, n - 7, 1, f) != n) {
+		printw("[x] An error occured with the local file %s : %s\n", r->hostname, r->id, strerror(errno));
+		goto end;
+	}
+
+	while((n = read(r->sock, buf, NET_BUFFER_SIZE)) <= 0) {
+		printw("[i] read %d bytes\n", n);
+		if(fwrite(buf, n, 1, f) != n) {
+			printw("[x] An error occured with the local file %s : %s\n", r->hostname, r->id, strerror(errno));
+			goto end;
+		}
 		
-    	pthread_mutex_lock(&robot_mutex);
-		list_remove(&robots, &(r->id), (int (*)(void *, void *))robot_search_id, free);
-    	pthread_mutex_unlock(&robot_mutex);
+		if(n < 0)
+			goto error;
+		else if(n < NET_BUFFER_SIZE)
+			break; // Finished
+	}
+	
+		
+	end:
+		fclose(f);
+		return;
+		
+	error:
+		robot_error_remove(r);
+		goto end;
+}
+
+static void robot_error_remove(robot* r) {
+	printw("[x] An error occured with %s (%d) : %s\n", r->hostname, r->id, strerror(errno));
+	refresh();
+	
+	pthread_mutex_lock(&robot_mutex);
+	list_remove(&robots, &(r->id), (int (*)(void *, void *))robot_search_id, free);
+	pthread_mutex_unlock(&robot_mutex);
 }
