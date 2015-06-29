@@ -13,6 +13,7 @@
 #include "list.h"
 #include "workers.h"
 #include "actions.h"
+#include "server_actions.h"
 
 // TODO : gestion arguments
 //        quit

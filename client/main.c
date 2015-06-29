@@ -9,26 +9,10 @@
 
 #define VERSION "0.01"
 #define NET_BUFFER_SIZE 2048
+#define MAX_TRY 5
 
-int port = 8080;
-char* addr = "127.0.0.1";
-
-int main(int argc, char** argv) {
-	
-	if(argc >= 2)
-		addr = argv[1];
-		
-	if(argc >= 3)
-		port = atoi(argv[2]);
-		
-	printf("[i] Connecting on %s:%d\n", addr, port);
-	
-	// Get computer name
-	char hostname[NET_BUFFER_SIZE];
-	hostname[NET_BUFFER_SIZE - 1] = '\0';
-	gethostname(hostname, NET_BUFFER_SIZE - 1);
-	
-	printf("[i] Computer name : %s\n", hostname);
+// Connect at the specified port to the specified address, using the given hostname as name
+int server_connect(int port, char* addr, char* hostname) {
 	
 	// Create socket
 	int socket_desc = socket(AF_INET, SOCK_STREAM, 0), n = 0;
@@ -66,6 +50,18 @@ int main(int argc, char** argv) {
 		goto error;
 	}
 	
+	return socket_desc;
+	
+	error:
+	return -1;
+}
+
+// Handle the commands send by the server
+void server_handler(int sock) {
+	
+	int n = 0;
+	char buf[NET_BUFFER_SIZE] = { 0 };
+	
 	// Read commands
 	while((n = read(socket_desc, buf, NET_BUFFER_SIZE - 1)) > 0) {
 		buf[n--] = '\0';
@@ -86,9 +82,58 @@ int main(int argc, char** argv) {
 	
 	if(n < 0)
 		goto error;
+	else
+		return 0;
+	
+	error:
+	return -1;
+}
+
+// Entry point
+int main(int argc, char** argv) {
+	
+	int port = 8080, sock = 0, i = 0;
+	char* addr = "127.0.0.1";
+
+	if(argc >= 2)
+		addr = argv[1];
 		
-	puts("[i] The server closed the connection");
-	return 0;
+	if(argc >= 3)
+		port = atoi(argv[2]);
+		
+	printf("[i] Connecting on %s:%d\n", addr, port);
+	
+	// Get computer name
+	char hostname[NET_BUFFER_SIZE];
+	hostname[NET_BUFFER_SIZE - 1] = '\0';
+	gethostname(hostname, NET_BUFFER_SIZE - 1);
+	
+	printf("[i] Computer name : %s\n", hostname);
+	
+	connection:
+	sock = server_connect(port, addr, hostname);
+	
+	if(sock <= 0) {
+		// If too much tries, go to error
+		if(i++ > MAX_TRY)
+			goto error;
+			
+		// Wait and retry
+		puts("[x] Connection faile, trying again in 5s ...");
+		sleep(5);
+		goto connection;
+	}
+	
+	i = 0; // Reset try counter
+	
+	// Read commands
+	if(server_handler(sock) == 0) {
+		puts("[i] The server closed the connection");
+		return EXIT_SUCCESS;
+	} else {
+		puts("[x] Connection lost with the server");			
+		goto connection;
+	}
 	
 	error:
 	return EXIT_FAILURE;

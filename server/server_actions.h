@@ -13,15 +13,9 @@
 #include "server.h"
 #include "robot.h"
 #include "workers.h"
+#include "actions.h"
 
-// Handler option
-struct server_option {
-	char* option;
-	void (*action)(int, char**);
-};
-
-void handle_command(char* command, const struct server_option *options);
-
+// Server specific actions
 void action_robots_show(int argc, char **argv);
 void action_robots_send_cmd(int argc, char **argv);
 void action_robots_close(int argc, char **argv);

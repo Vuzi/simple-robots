@@ -7,46 +7,6 @@ static void robot_send_cmd(robot* r, char **argv);
 static void robot_show(robot *r, void *unused);
 static void robot_close(robot *r);
 
-// Handle a specified command with the given command and options
-void handle_command(char* command, const struct server_option *options) {
-	int i = 0, in_value = 0, argc = 0;
-	char* argv[32] = { NULL };
-	
-	while(command[i]) {
-		if(command[i] == ' ') {
-			if(in_value) {
-				command[i] = '\0';
-				in_value = 0;
-			}
-		} else {
-			if(!in_value) {
-				argv[argc++] = command + i;
-				in_value = 1;
-				
-				if(argc >= 32)
-					break;
-			}
-		}
-		
-		i++;
-	}
-	
-	if(!argc)
-		return;
-	
-	i = 0;
-	while(options[i].option) {
-		if(!strcmp(argv[0], options[i].option)) {
-			options[i].action(argc - 1, argv + 1);
-			return;
-		}
-		
-		i++;
-	}
-	
-	printw("[i] Unkown command : %s\n", argv[0]);
-}
-
 // -- Actions
 // Show informations about all the robots, or a specified robot
 void action_robots_show(int argc, char* argv[]) {
