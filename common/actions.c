@@ -30,7 +30,8 @@ void handle_action(char* command, const struct command_action *options) {
 	i = 0;
 	while(options[i].option) {
 		if(!strcmp(argv[0], options[i].option)) {
-			options[i].action(argc - 1, argv + 1);
+			if(options[i].action)
+				options[i].action(argc - 1, argv + 1);
 			return;
 		}
 		

