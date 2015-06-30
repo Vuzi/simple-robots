@@ -332,7 +332,7 @@ static void show_help(){
 	puts("--help\t-h");
 	puts("\tDisplay help.\n");
 	
-	puts("--p\t-p\t{port}");
+	puts("--port\t-p\t{port}");
 	puts("\tAllow to set the port to use. Set by default to 8080.\n");
 	
 	show_version();

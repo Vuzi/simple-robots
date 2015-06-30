@@ -6,6 +6,10 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <sys/socket.h>
+#include <getopt.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include <actions.h>
 
@@ -14,11 +18,20 @@
 #define NET_BUFFER_SIZE 2048
 #define MAX_TRY 5
 
+int port = 8080;
+char* addr = "127.0.0.1";
+int daemon = 0;
 int socket_val;
 
 // -- Prototypes
 void action_do(int argc, char** argv);
 void action_get(int argc, char** argv);
+static void skeleton_daemon();
+void parse_options(int argc, char** argv);
+static void show_version();
+static void show_informations();
+static void show_help();
+static void show_usages();
 
 static struct command_action options[] = {
 	{ "do",  action_do },
@@ -145,16 +158,11 @@ int server_handler(int sock) {
 
 // Entry point
 int main(int argc, char** argv) {
+	int sock = 0, i = 0;
 	
-	int port = 8080, sock = 0, i = 0;
-	char* addr = "127.0.0.1";
-
-	if(argc >= 2)
-		addr = argv[1];
-		
-	if(argc >= 3)
-		port = atoi(argv[2]);
-		
+	// Arguments handling with getopt_long
+	parse_options(argc, argv);
+			
 	printf("[i] Connecting on %s:%d\n", addr, port);
 	
 	// Get computer name
@@ -162,35 +170,196 @@ int main(int argc, char** argv) {
 	hostname[NET_BUFFER_SIZE - 1] = '\0';
 	gethostname(hostname, NET_BUFFER_SIZE - 1);
 	
-	printf("[i] Computer name : %s\n", hostname);
-	
-	connection:
-	socket_val = sock = server_connect(port, addr, hostname);
-	
-	if(sock <= 0) {
-		// If too much tries, go to error
-		if(i++ > MAX_TRY)
+	if (daemon){
+		printf("[i] Started in daemon mode.\n");
+		
+		skeleton_daemon();
+		
+		connection_d:
+		socket_val = sock = server_connect(port, addr, hostname);
+		
+		if(sock <= 0) {
+			// If too much tries, go to error
+			if(i++ > MAX_TRY)
 			goto error;
 			
-		// Wait and retry
-		puts("[x] Connection failed, trying again in 5s ...");
-		sleep(5);
-		goto connection;
-	}
-	
-	puts("[i] Connected to server !");
-	i = 0; // Reset try counter
-	
-	// Read commands
-	if(server_handler(sock) == 0) {
-		puts("[i] The server closed the connection");
-		return EXIT_SUCCESS;
+			// Wait and retry
+			puts("[x] Connection failed, trying again in 5s ...");
+			sleep(5);
+			goto connection_d;
+		}
+		
+		puts("[i] Connected to server !");
+		i = 0; // Reset try counter
+		
+		// Read commands
+		if(server_handler(sock) == 0) {
+			puts("[i] The server closed the connection");
+			daemon = 0;
+			return EXIT_SUCCESS;
+		} else {
+			puts("[x] Connection lost with the server");
+			daemon = 0;			
+			goto connection;
+		}			
 	} else {
-		puts("[x] Connection lost with the server");			
-		goto connection;
+		printf("[i] Computer name : %s\n", hostname);
+		
+		connection:
+		socket_val = sock = server_connect(port, addr, hostname);
+		
+		if(sock <= 0) {
+			// If too much tries, go to error
+			if(i++ > MAX_TRY)
+				goto error;
+				
+			// Wait and retry
+			puts("[x] Connection failed, trying again in 5s ...");
+			sleep(5);
+			goto connection;
+		}
+		
+		puts("[i] Connected to server !");
+		i = 0; // Reset try counter
+		
+		// Read commands
+		if(server_handler(sock) == 0) {
+			puts("[i] The server closed the connection");
+			return EXIT_SUCCESS;
+		} else {
+			puts("[x] Connection lost with the server");			
+			goto connection;
+		}
 	}
 	
 	error:
 	return EXIT_FAILURE;
+}
+
+// Handle the daemon creation
+static void skeleton_daemon(){
+    pid_t pid;
+
+    // Fork off the parent process
+    pid = fork();
+
+    // An error occurred
+    if (pid < 0)
+        exit(EXIT_FAILURE);
+
+    // Success: Let the parent terminate
+    if (pid > 0)
+        exit(EXIT_SUCCESS);
+
+    // On success: The child process becomes session leader
+    if (setsid() < 0)
+        exit(EXIT_FAILURE);
+
+    // Catch, ignore and handle signals
+    // TODO: Implement a working signal handler
+    signal(SIGCHLD, SIG_IGN);
+    signal(SIGHUP, SIG_IGN);
+
+    // Fork off for the second time
+    pid = fork();
+
+    // An error occurred
+    if (pid < 0)
+        exit(EXIT_FAILURE);
+
+    // Success: Let the parent terminate
+    if (pid > 0)
+        exit(EXIT_SUCCESS);
+
+    // Set new file permissions
+    umask(0);
+
+    // Change the working directory to the root directory
+    chdir("/");
+
+    // Close all open file descriptors
+    for (int x = sysconf(_SC_OPEN_MAX); x > 0; x--)
+        close (x);
+}
+
+// Handle the option parsing with getopt_long
+void parse_options(int argc, char** argv){
+	int opt = 0;
+	
+	// Specify the expected options
+    static struct option long_options[] = {        
+        {"version",		no_argument,		NULL,  	'v' },
+        {"informations",no_argument, 		NULL,	'i' },
+		{"help",		no_argument,       	NULL,  	'h' },
+		{"daemon",		no_argument,       	NULL,  	'd' },
+        {"port",		required_argument, 	NULL,  	'p' },
+		{"address",		required_argument, 	NULL,  	'a' },
+        {NULL,          0,                  NULL,   0   }
+    };
+		
+	int long_index = 0;
+    while ((opt = getopt_long(argc, argv, "vihdp:a:", long_options, &long_index	)) != -1) {
+        switch (opt) {
+             case 'v' : show_version();
+                 exit(EXIT_SUCCESS);
+             case 'i' : show_informations();
+                 exit(EXIT_SUCCESS);
+             case 'h' : show_help();
+                 exit(EXIT_SUCCESS);
+			 case 'd' : daemon = 1;
+			 	 break;
+             case 'p' : port = atoi(optarg);
+                 break;
+			 case 'a' : addr = optarg;
+                 break;
+             default: show_usages();
+			 	exit(EXIT_FAILURE);	
+        }
+    }
+}
+
+// Print the server version
+static void show_version(){
+	printf("robot_client v%s\nCompiled at %s %s\n", VERSION, __TIME__, __DATE__);
+	printf("\nWritten by Vuzi & Dimitri\n");
+	printf("See https://github.com/Vuzi/SimpleRobots for more informations\n");
+}
+
+// Print the server informations
+static void show_informations(){
+	printf("No informations yet.");
+}
+
+// Display help about the server commands
+static void show_help(){
+	puts("robot_client\n");
+	
+	puts("usage : ");
+	puts("\trobot_client [-v|--version] [-i|--information] [-h|--help] [-p|--port {port_number}] [-a|--address {address_name}]");
+	
+	puts("\nOptions : ");
+	puts("--version\t-v");
+	puts("\tShow the client version.\n");
+	
+	puts("--informations\t-i");	
+	puts("\tShow the client informations.\n");
+	
+	puts("--help\t-h");
+	puts("\tDisplay help.\n");
+	
+	puts("--port\t-p\t{port}");
+	puts("\tAllow to set the port to use. Set by default to '8080'.\n");
+	
+	puts("--address\t-a\t{address}");
+	puts("\tAllow to set the address to use. Set by default to '127.0.0.1'.\n");
+	
+	show_version();
+}
+
+// Print usages of the application
+static void show_usages(){
+	puts("usage : ");
+	puts("\trobot_client [-v|--version] [-i|--information] [-h|--help] [-p|--port {port_number}] [-a|--address {address_name}]");
+	puts("\tTry --help for more informations");
 }
 
