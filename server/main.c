@@ -87,6 +87,7 @@ int main(int argc, char **argv) {
 		{ "show",  action_robots_show },
 		{ "close", action_robots_close },
 		{ "send",  action_robots_send_cmd },
+		{ "get",   action_robots_rcv_file },
 		{ NULL,    NULL }
 	};
 	

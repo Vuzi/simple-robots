@@ -28,7 +28,6 @@ void list_init(list* l) {
 	l->nodes = NULL;
 }
 
-
 // Add a value at the end of the list
 void list_append(list* l, void* data) {
 	node* last = list_last(l);

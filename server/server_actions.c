@@ -228,7 +228,7 @@ static void robot_recv_file(robot* r, const char *source, const char *dest) {
 	if(send(r->sock, "get ", 4, MSG_MORE|MSG_NOSIGNAL) <= 0)
 		goto error;
 	
-	if(send(r->sock, dest, 4, MSG_EOR|MSG_NOSIGNAL) <= 0)
+	if(send(r->sock, dest, 4, MSG_MORE|MSG_NOSIGNAL) <= 0)
 		goto error;
 	
 	// Read response
@@ -236,24 +236,21 @@ static void robot_recv_file(robot* r, const char *source, const char *dest) {
 		goto error;
 	buf[n] = '\0';
 	
-	printw(buf);
-	
 	if(strncmp(buf, "got it\n", 7)) {
 		// An error occured
 		printw("[x] Error with %s (%d) : %s\n", r->hostname, r->id, buf);
 		goto end;
 	}
 	
+	// Send ok
+	if(send(r->sock, "ok\n", 3, MSG_MORE|MSG_NOSIGNAL) <= 0)
+		goto error;
+	
 	// Get the file content
-	if(fwrite(buf + 7, n - 7, 1, f) != n) {
-		printw("[x] An error occured with the local file %s : %s\n", r->hostname, r->id, strerror(errno));
-		goto end;
-	}
-
-	while((n = read(r->sock, buf, NET_BUFFER_SIZE)) <= 0) {
+	while((n = read(r->sock, buf, NET_BUFFER_SIZE)) >= 0) {
 		printw("[i] read %d bytes\n", n);
-		if(fwrite(buf, n, 1, f) != n) {
-			printw("[x] An error occured with the local file %s : %s\n", r->hostname, r->id, strerror(errno));
+		if(fwrite(buf, n, 1, f) != 1) {
+			printw("[x] An error occured with the local file %s : %s\n", dest, strerror(errno));
 			goto end;
 		}
 		

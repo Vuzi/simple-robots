@@ -47,30 +47,63 @@ void action_do(int argc, char** argv) {
 	
 	if(n < 0) {
 		// Error
-        perror("[x] Could not fork");
+		if(!daemon)
+        	perror("[x] Could not fork");
+		
 	} else if(n == 0) {
 		execvp(argv[0], argv);
 		
 		// Error
-        perror("[x] Could not exec the command");
+		if(!daemon)
+        	perror("[x] Could not exec the command");
+			
 		exit(EXIT_FAILURE);
+	} else {
+		// Send done
+		if(send(sock, "done", 4, MSG_EOR|MSG_NOSIGNAL) <= 0) {
+			if(!daemon)
+				perror("[x] Send failed");
+		}
 	}
 }
 
 // Get a file
 void action_get(int argc, char** argv) {
 	
+	int n = 0;
+	char buf[NET_BUFFER_SIZE] = {0};
 	// TODO
 	
 	// Send "ready"
-	if(send(socket_val, "got it\n", 7, MSG_EOR|MSG_NOSIGNAL) <= 0) {
-		perror("[x] Send failed");
+	if(send(socket_val, "got it\n", 7, MSG_NOSIGNAL) <= 0) {
+		if(!daemon)
+			perror("[x] Send failed");
+			
+		goto error;
+	}
+	
+	// Read response from server
+	if((n = read(socket_val, buf, NET_BUFFER_SIZE - 1)) <= 0) {
+		if(!daemon)
+			perror("[x] Reponse failed");
+			
+		goto error;
+	}
+	buf[n] = '\0';
+	
+	if(strncmp("ok", buf, 2)) {
+		// Not OK
+		if(!daemon)
+			puts("[x] Server refused file");
+		
 		goto error;
 	}
 	
 	char* test = "Hello world!\nI'm the file content :)";
-	if(send(socket_val, test, strlen(test), MSG_EOR|MSG_NOSIGNAL) <= 0) {
-		perror("[x] Send failed");
+	if(send(socket_val, test, strlen(test), MSG_NOSIGNAL) <= 0) {
+		if(!daemon)
+			perror("[x] Send failed");
+			
 		goto error;
 	}
 	
@@ -87,7 +120,9 @@ int server_connect(int port, char* addr, char* hostname) {
 	char buf[NET_BUFFER_SIZE] = { 0 };
 	
 	if(socket_desc < 0) {
-        perror("[x] Could not create socket");
+		if(!daemon)
+		   perror("[x] Could not create socket");
+		   
         return EXIT_FAILURE;
 	}
 	
@@ -97,14 +132,18 @@ int server_connect(int port, char* addr, char* hostname) {
     client.sin_port = htons(port);
 	
 	if(connect(socket_desc, (struct sockaddr*)&client, sizeof(client)) < 0) {
-		perror("[x] Bind failed");
+		if(!daemon)
+			perror("[x] Bind failed");
+			
 		goto error;
 	}
 	
 	// Send "hello" with the hostname
 	snprintf(buf, NET_BUFFER_SIZE, "hello %s\n", hostname);
 	if(send(socket_desc, buf, strlen(buf), MSG_EOR|MSG_NOSIGNAL) <= 0) {
-		perror("[x] Send failed");
+		if(!daemon)
+			perror("[x] Send failed");
+			
 		goto error;
 	}
 	
@@ -113,7 +152,9 @@ int server_connect(int port, char* addr, char* hostname) {
 	
 	// Send "ready"
 	if(send(socket_desc, "ready\n", 6, MSG_EOR|MSG_NOSIGNAL) <= 0) {
-		perror("[x] Send failed");
+		if(!daemon)
+			perror("[x] Send failed");
+		
 		goto error;
 	}
 	
@@ -136,15 +177,13 @@ int server_handler(int sock) {
 		while(n && ( buf[n] == '\n' || buf[n] == '\r' || buf[n] == ' ')) // Trim
 			buf[n--] = '\0';
 		
-		printf("[i] read : %s\n", buf);
+		if(!daemon)
+			printf("[i] read : %s\n", buf);
+			
 		handle_action(buf, options);
-		puts("[i] done !");
 		
-		// Send done
-		if(send(sock, "done", 4, MSG_EOR|MSG_NOSIGNAL) <= 0) {
-			perror("[x] Send failed");
-			goto error;
-		}
+		if(!daemon)
+			puts("[i] done !");
 	}
 	
 	if(n < 0)
@@ -162,7 +201,7 @@ int main(int argc, char** argv) {
 	
 	// Arguments handling with getopt_long
 	parse_options(argc, argv);
-			
+	
 	printf("[i] Connecting on %s:%d\n", addr, port);
 	
 	// Get computer name
@@ -186,20 +225,26 @@ int main(int argc, char** argv) {
 			goto error;
 			
 		// Wait and retry
-		puts("[x] Connection failed, trying again in 5s ...");
+		if(!daemon)
+			puts("[x] Connection failed, trying again in 5s ...");
 		sleep(5);
 		goto connection;
 	}
 	
-	puts("[i] Connected to server !");
+	if(!daemon)
+		puts("[i] Connected to server !");
 	i = 0; // Reset try counter
 	
 	// Read commands
 	if(server_handler(sock) == 0) {
-		puts("[i] The server closed the connection");
+		if(!daemon)
+			puts("[i] The server closed the connection");
+			
 		return EXIT_SUCCESS;
 	} else {
-		puts("[x] Connection lost with the server");			
+		if(!daemon)
+			puts("[x] Connection lost with the server");
+					
 		goto connection;
 	}
 	
@@ -215,8 +260,10 @@ static void skeleton_daemon(){
     pid = fork();
 
     // An error occurred
-    if (pid < 0)
+    if (pid < 0) {
+		perror("[x] Impossible to fork");
         exit(EXIT_FAILURE);
+	}
 
     // Success: Let the parent terminate
     if (pid > 0)
@@ -227,7 +274,6 @@ static void skeleton_daemon(){
         exit(EXIT_FAILURE);
 
     // Catch, ignore and handle signals
-    // TODO: Implement a working signal handler
     signal(SIGCHLD, SIG_IGN);
     signal(SIGHUP, SIG_IGN);
 
@@ -241,16 +287,6 @@ static void skeleton_daemon(){
     // Success: Let the parent terminate
     if (pid > 0)
         exit(EXIT_SUCCESS);
-
-    // Set new file permissions
-    umask(0);
-
-    // Change the working directory to the root directory
-    chdir("/");
-
-    // Close all open file descriptors
-    for (int x = sysconf(_SC_OPEN_MAX); x > 0; x--)
-        close (x);
 }
 
 // Handle the option parsing with getopt_long
@@ -318,6 +354,9 @@ static void show_help(){
 	puts("--help\t-h");
 	puts("\tDisplay help.\n");
 	
+	puts("--daemon\t-d");
+	puts("\tRun in daemon mode.\n");
+	
 	puts("--port\t-p\t{port}");
 	puts("\tAllow to set the port to use. Set by default to '8080'.\n");
 	
@@ -330,7 +369,7 @@ static void show_help(){
 // Print usages of the application
 static void show_usages(){
 	puts("usage : ");
-	puts("\trobot_client [-v|--version] [-i|--information] [-h|--help] [-p|--port {port_number}] [-a|--address {address_name}]");
+	puts("\trobot_client [-v|--version] [-i|--information] [-h|--help] [-d|--daemon] [-p|--port {port_number}] [-a|--address {address_name}]");
 	puts("\tTry --help for more informations");
 }
 
