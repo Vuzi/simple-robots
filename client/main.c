@@ -72,7 +72,26 @@ void action_get(int argc, char** argv) {
 	
 	int n = 0;
 	char buf[NET_BUFFER_SIZE] = {0};
-	// TODO
+	
+	if(argc < 1) {
+		send(socket_val, "error : no file specified\n", 32, MSG_NOSIGNAL)
+	}
+	
+	FILE* f = fopen(argv[0], "r");
+	
+	if(!f) {
+		if(!daemon)
+			perror("[x] Could not open file");
+		
+		// File could not be opened, send error
+		snprintf(buf, NET_BUFFER_SIZE, "error : %s", strerror(errno));
+		if(send(socket_val, buf, strlen(buf), MSG_NOSIGNAL) <= 0) {
+			if(!daemon)
+				perror("[x] Send failed");
+				
+			goto error;
+		}
+	}
 	
 	// Send "ready"
 	if(send(socket_val, "got it\n", 7, MSG_NOSIGNAL) <= 0) {
@@ -99,11 +118,24 @@ void action_get(int argc, char** argv) {
 		goto error;
 	}
 	
-	char* test = "Hello world!\nI'm the file content :)";
-	if(send(socket_val, test, strlen(test), MSG_NOSIGNAL) <= 0) {
-		if(!daemon)
-			perror("[x] Send failed");
+	// TODO eof
+	// Send the file content
+	while((n = fread(buf, NET_BUFFER_SIZE, 1, f))) {
+		int size = n;
+		
+		if((n = send(socket_val, buf, size, MSG_NOSIGNAL) <= 0 || size != n) {
+			if(!daemon)
+				perror("[x] Send failed");
 			
+			goto error;
+		}
+	}
+	
+	// Test for end of file
+	if(!feof(f)) {
+		if(!daemon)
+			perror("[x] Read failed");
+		
 		goto error;
 	}
 	
