@@ -215,7 +215,7 @@ static void robot_send_cmd_handler(void **values) {
 static void robot_recv_file(robot* r, const char *source, const char *dest) {
 	
 	// Try to open the destination file
-	FILE* f = fopen(dest, "w");
+	FILE* f = fopen(dest, "wb");
 	char buf[NET_BUFFER_SIZE] = {0};
 	int n = 0;
 	
@@ -228,8 +228,11 @@ static void robot_recv_file(robot* r, const char *source, const char *dest) {
 	if(send(r->sock, "get ", 4, MSG_MORE|MSG_NOSIGNAL) <= 0)
 		goto error;
 	
-	if(send(r->sock, dest, 4, MSG_MORE|MSG_NOSIGNAL) <= 0)
+	if(send(r->sock, source, strlen(source), MSG_NOSIGNAL) <= 0)
 		goto error;
+	
+	printw("test get\n");
+	refresh();
 	
 	// Read response
 	if((n = read(r->sock, buf, NET_BUFFER_SIZE - 1)) <= 0)
@@ -242,25 +245,44 @@ static void robot_recv_file(robot* r, const char *source, const char *dest) {
 		goto end;
 	}
 	
+	int size = atoi(buf + 7);
+	
+	printw("test got it %d\n", size);
+	refresh();
+	
 	// Send ok
-	if(send(r->sock, "ok\n", 3, MSG_MORE|MSG_NOSIGNAL) <= 0)
+	if(send(r->sock, "ok\n", 3, MSG_NOSIGNAL) <= 0)
 		goto error;
+		
+	printw("test ok\n");
+	refresh();
 	
 	// Get the file content
-	while((n = read(r->sock, buf, NET_BUFFER_SIZE)) >= 0) {
+	int size_read = 0;
+	int to_read = NET_BUFFER_SIZE > size ? size : NET_BUFFER_SIZE;
+	
+	while((n = read(r->sock, buf, to_read)) > 0) {
 		printw("[i] read %d bytes\n", n);
-		if(fwrite(buf, n, 1, f) != 1) {
+		
+		size_read += n;
+		to_read = size - size_read;
+		if(to_read > NET_BUFFER_SIZE)
+			to_read = NET_BUFFER_SIZE;
+		
+		if(fwrite(buf, 1, n, f) != n) {
 			printw("[x] An error occured with the local file %s : %s\n", dest, strerror(errno));
 			goto end;
 		}
 		
-		if(n < 0)
-			goto error;
-		else if(n < NET_BUFFER_SIZE)
-			break; // Finished
+		if(to_read <= 0)
+			break;
+	}
+
+	if(n < 0) {
+		printw("[x] Error with %s (%d) : %s\n", r->hostname, r->id, strerror(errno));
+		goto error; // Finished
 	}
 	
-		
 	end:
 		fclose(f);
 		return;
