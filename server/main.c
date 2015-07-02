@@ -10,16 +10,9 @@
 
 #include "server.h"
 
-// TODO : gestion arguments
-//        quit
-//        download file
-//        upload file ?
-
-// TODO : client
-
 #define VERSION "0.01"
 
-int port = 8080;
+int port = DEFAULT_PORT;
 
 list robots;                 // List of robots
 pthread_mutex_t robot_mutex; // Robot list mutex

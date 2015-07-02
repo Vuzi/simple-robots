@@ -149,7 +149,7 @@ static int get_robot_id(unsigned int *id, int argc, char* argv[]) {
 // Close a connection and delete the robot
 static void robot_close(robot *r) {
 	//  Try to say goodbye
-	send(r->sock, "goodbye\n", 8, MSG_NOSIGNAL);
+	send_msg(r->sock, "goodbye\n");
 	
 	// Close & free
 	close(r->sock);
@@ -199,12 +199,10 @@ static void robot_send_cmd_handler(void **values) {
 		i++;
 	}
 	
-	if(send(r->sock, "\n", 1, MSG_EOR|MSG_NOSIGNAL) <= 0)
-		goto error;
+	if(send_msg(r->sock, "\n")) goto error;
 	
 	// Read the response 'done'
-	if(read(r->sock, buf, 512) <= 0)
-		goto error;
+	if(read_msg(r->sock, buf, 512)) goto error;
 	
 	return;
 	
@@ -225,19 +223,11 @@ static void robot_recv_file(robot* r, const char *source, const char *dest) {
 	}
 	
 	// Send the command
-	if(send(r->sock, "get ", 4, MSG_MORE|MSG_NOSIGNAL) <= 0)
-		goto error;
 	
-	if(send(r->sock, source, strlen(source), MSG_NOSIGNAL) <= 0)
-		goto error;
-	
-	printw("test get\n");
-	refresh();
+	if(send_msg(r->sock, "get %s", source)) goto error;
 	
 	// Read response
-	if((n = read(r->sock, buf, NET_BUFFER_SIZE - 1)) <= 0)
-		goto error;
-	buf[n] = '\0';
+	if(read_msg(r->sock, buf, NET_BUFFER_SIZE)) goto error;
 	
 	if(strncmp(buf, "got it\n", 7)) {
 		// An error occured
@@ -247,22 +237,18 @@ static void robot_recv_file(robot* r, const char *source, const char *dest) {
 	
 	int size = atoi(buf + 7);
 	
-	printw("test got it %d\n", size);
-	refresh();
-	
 	// Send ok
-	if(send(r->sock, "ok\n", 3, MSG_NOSIGNAL) <= 0)
-		goto error;
-		
-	printw("test ok\n");
-	refresh();
+	if(send_msg(r->sock, "ok\n")) goto error;
+	
+	
+	printw("[i] Downloading a %d bytes file...\n", size);
 	
 	// Get the file content
 	int size_read = 0;
 	int to_read = NET_BUFFER_SIZE > size ? size : NET_BUFFER_SIZE;
 	
 	while((n = read(r->sock, buf, to_read)) > 0) {
-		printw("[i] read %d bytes\n", n);
+		//printw("[i] read %d bytes\n", n);
 		
 		size_read += n;
 		to_read = size - size_read;
@@ -282,6 +268,8 @@ static void robot_recv_file(robot* r, const char *source, const char *dest) {
 		printw("[x] Error with %s (%d) : %s\n", r->hostname, r->id, strerror(errno));
 		goto error; // Finished
 	}
+	
+	printw("[i] File dowloaded to %s\n", dest);
 	
 	end:
 		fclose(f);
