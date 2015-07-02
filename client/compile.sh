@@ -1,2 +1,2 @@
-gcc -Wall -I ../common --std=c99 main.c ../common/actions.c -o client
+gcc -Wall -I ../common -D CLIENT --std=c99 main.c ../common/actions.c ../common/socket_utils.c -o client
 

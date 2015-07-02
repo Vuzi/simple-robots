@@ -10,16 +10,19 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <stdarg.h>
 
+// -- Common includes
+#include <macro.h>
 #include <actions.h>
+#include <socket_utils.h>
 
 // -- Defines
 #define VERSION "0.01"
-#define NET_BUFFER_SIZE 2048
 #define MAX_TRY 5
 
-int port = 8080;
-char* addr = "127.0.0.1";
+int port = DEFAULT_PORT;
+char* addr = DEFAULT_IP;
 int daemon = 0;
 int socket_val;
 
@@ -47,97 +50,55 @@ void action_do(int argc, char** argv) {
 	
 	if(n < 0) {
 		// Error
-		if(!daemon)
-        	perror("[x] Could not fork");
-		
+		if(!daemon) perror("[x] Could not fork");
 	} else if(n == 0) {
 		execvp(argv[0], argv);
 		
 		// Error
-		if(!daemon)
-        	perror("[x] Could not exec the command");
-			
+		if(!daemon) perror("[x] Could not exec the command");
 		exit(EXIT_FAILURE);
-	} else {
-		// Send done
-		if(send(sock, "done", 4, MSG_EOR|MSG_NOSIGNAL) <= 0) {
-			if(!daemon)
-				perror("[x] Send failed");
-		}
-	}
+	} else
+		send_msg(socket_val, "done"); // Send done
 }
 
 // Get a file
 void action_get(int argc, char** argv) {
 	
-	int n = 0;
 	char buf[NET_BUFFER_SIZE] = {0};
+	FILE* f = NULL;
 	
 	if(argc < 1) {
-		send(socket_val, "error : no file specified\n", 32, MSG_NOSIGNAL)
+		send_msg(socket_val, "error : no file specified\n");
+		goto error;
 	}
 	
-	FILE* f = fopen(argv[0], "r");
-	
-	if(!f) {
-		if(!daemon)
-			perror("[x] Could not open file");
+	if(!(f = fopen(argv[0], "rb"))) {
+		if(!daemon) perror("[x] Could not open file");
 		
 		// File could not be opened, send error
-		snprintf(buf, NET_BUFFER_SIZE, "error : %s", strerror(errno));
-		if(send(socket_val, buf, strlen(buf), MSG_NOSIGNAL) <= 0) {
-			if(!daemon)
-				perror("[x] Send failed");
-				
-			goto error;
-		}
+		send_msg(socket_val, "error : %s", strerror(errno));
+		goto error;
 	}
+	
+	// Get file size
+	fseek(f, 0, SEEK_END);
+    size_t size = ftell(f);
+	fseek(f, 0, SEEK_SET);
 	
 	// Send "ready"
-	if(send(socket_val, "got it\n", 7, MSG_NOSIGNAL) <= 0) {
-		if(!daemon)
-			perror("[x] Send failed");
-			
-		goto error;
-	}
+	if(send_msg(socket_val, "got it\n%zu\n", size)) goto error;
 	
 	// Read response from server
-	if((n = read(socket_val, buf, NET_BUFFER_SIZE - 1)) <= 0) {
-		if(!daemon)
-			perror("[x] Reponse failed");
-			
-		goto error;
-	}
-	buf[n] = '\0';
-	
+	if(read_msg(socket_val, buf, NET_BUFFER_SIZE)) goto error;
+
 	if(strncmp("ok", buf, 2)) {
 		// Not OK
-		if(!daemon)
-			puts("[x] Server refused file");
-		
+		if(!daemon) puts("[x] Server refused file");
 		goto error;
 	}
 	
-	// TODO eof
 	// Send the file content
-	while((n = fread(buf, NET_BUFFER_SIZE, 1, f))) {
-		int size = n;
-		
-		if((n = send(socket_val, buf, size, MSG_NOSIGNAL) <= 0 || size != n) {
-			if(!daemon)
-				perror("[x] Send failed");
-			
-			goto error;
-		}
-	}
-	
-	// Test for end of file
-	if(!feof(f)) {
-		if(!daemon)
-			perror("[x] Read failed");
-		
-		goto error;
-	}
+	send_file(socket_val, f);
 	
 	error:
 	return;
@@ -171,24 +132,13 @@ int server_connect(int port, char* addr, char* hostname) {
 	}
 	
 	// Send "hello" with the hostname
-	snprintf(buf, NET_BUFFER_SIZE, "hello %s\n", hostname);
-	if(send(socket_desc, buf, strlen(buf), MSG_EOR|MSG_NOSIGNAL) <= 0) {
-		if(!daemon)
-			perror("[x] Send failed");
-			
-		goto error;
-	}
+	if(send_msg(socket_desc, "hello %s\n", hostname)) goto error;
 	
-	// Receive "hello" with the id
-	read(socket_desc, buf, NET_BUFFER_SIZE - 1);
+	// Receive "hello" with the id (ignore)
+	if(read_msg(socket_desc, buf, NET_BUFFER_SIZE)) goto error;
 	
 	// Send "ready"
-	if(send(socket_desc, "ready\n", 6, MSG_EOR|MSG_NOSIGNAL) <= 0) {
-		if(!daemon)
-			perror("[x] Send failed");
-		
-		goto error;
-	}
+	if(send_msg(socket_desc, "ready\n")) goto error;
 	
 	return socket_desc;
 	
