@@ -1,3 +1,10 @@
+/*
+ * File robot.h
+ * ---------------------------------------------
+ * Robot header
+ * 
+ */
+
 #ifndef ROBOT_H
 #define ROBOT_H
 
@@ -9,7 +16,9 @@
 
 #define NEXT(i) (i = i->next)
 
-// Robot client structure
+/**
+ * Robot client structure
+ */
 struct robot {
     unsigned int id;                // Unique ID
     char hostname[512];             // Hostname
@@ -23,7 +32,5 @@ typedef struct robot robot;
 robot* robot_new(int sock, const struct sockaddr_in* sock_info);
 void robot_init(robot* r, int sock, const struct sockaddr_in* sock_info);
 int robot_search_id(int *id, robot *r);
-
-// inet_ntop(AF_INET, &(client.sin_addr), ip_addr, INET_ADDRSTRLEN), 
 
 #endif

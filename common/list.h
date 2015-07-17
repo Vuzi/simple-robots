@@ -1,3 +1,10 @@
+/*
+ * File list.h
+ * ---------------------------------------------
+ * Generic simple linked lists header file
+ * 
+ */
+
 #ifndef LIST_H
 #define LIST_H
 
@@ -7,14 +14,20 @@
 #define NEXT(i) (i = i->next)
 
 // -- Types
+/**
+ * Internal node of the list
+ */
 struct node {
-	void* data;           // Data
-	struct node* next;	  // Next element, or NULL
+    void* data;           // Data
+    struct node* next;    // Next element, or NULL
 };
 
+/**
+ * Wrapper for the linked list of nodes
+ */
 struct list {
-	unsigned int length;  // Number of element in the list
-	struct node* nodes;   // First node of the list
+    unsigned int length;  // Number of element in the list
+    struct node* nodes;   // First node of the list
 };
 
 typedef struct list list;

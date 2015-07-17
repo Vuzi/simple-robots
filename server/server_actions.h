@@ -1,3 +1,10 @@
+/*
+ * File server_actions.h
+ * ---------------------------------------------
+ * Action of the server
+ * 
+ */
+
 #ifndef SERVER_ACTIONS_H
 #define SERVER_ACTIONS_H
 

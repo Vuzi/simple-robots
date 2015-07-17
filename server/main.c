@@ -29,7 +29,11 @@ static void show_help();
 static void show_usages();
 
 // -- Functions
-// Init ncurses
+/**
+ * Init ncurses
+ * 
+ * @return The ncurses window
+ */
 WINDOW* ncurses_init() {
 	WINDOW *w = initscr();
 	raw();
@@ -40,7 +44,9 @@ WINDOW* ncurses_init() {
 	return w;
 }
 
-// Entry point
+/**
+ * Entry point
+ */
 int main(int argc, char **argv) {
 	
 	// Arguments handling with getopt_long
@@ -152,7 +158,7 @@ int main(int argc, char **argv) {
 	}
 	
 	end:
-	printw("\n\Exiting Now\n");
+	printw("\nExiting Now\n");
 	
 	// Stop ncurses
 	endwin();
@@ -164,7 +170,9 @@ int main(int argc, char **argv) {
 	return EXIT_SUCCESS;
 }
 
-// Connection handler
+/**
+ * Connection handler
+ */
 static void action_connect(void* val) {
 	
 	robot *r = (robot*) val;
@@ -212,7 +220,9 @@ static void action_connect(void* val) {
 	return;
 }
 
-// Server handler thread
+/**
+ * Server handler thread
+ */
 static void* server_handler(void* w) {
 	// Server startup 
 	int socket_desc, socket_client_desc;
@@ -267,7 +277,9 @@ static void* server_handler(void* w) {
 	return NULL;
 }
 
-// Handle the option parsing with getopt_long
+/**
+ * Handle the option parsing with getopt_long
+ */
 void parse_options(int argc, char** argv){
 	int opt = 0;
 	
@@ -297,19 +309,25 @@ void parse_options(int argc, char** argv){
     }
 }
 
-// Print the server version
+/**
+ * Print the server version
+ */
 static void show_version(){
 	printf("robot_server v%s\nCompiled at %s %s\n", VERSION, __TIME__, __DATE__);
 	printf("\nWritten by Vuzi & Dimitri\n");
 	printf("See https://github.com/Vuzi/SimpleRobots for more informations\n");
 }
 
-// Print the server informations
+/**
+ * Print the server informations
+ */
 static void show_informations(){
 	printf("No informations yet.");
 }
 
-// Display help about the server commands
+/**
+ * Display help about the server commands
+ */
 static void show_help(){
 	puts("robot_server\n");
 	
@@ -332,11 +350,12 @@ static void show_help(){
 	show_version();
 }
 
-// Print usages of the application
+/**
+ * Print usages of the application
+ */
 static void show_usages(){
 	puts("usage : ");
 	puts("\trobot_server [-v|--version] [-i|--information] [-h|--help] [-p|--port {port_number}]");
 	puts("\tTry --help for more informations");
 }
-
 

@@ -1,3 +1,10 @@
+/*
+ * File client.h
+ * ---------------------------------------------
+ * Action of the server
+ * 
+ */
+
 #ifndef CLIENT_H
 #define CLIENT_H
 

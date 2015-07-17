@@ -1,3 +1,10 @@
+/*
+ * File workers.h
+ * ---------------------------------------------
+ * Workers implementation header file
+ * 
+ */
+
 #ifndef WORKERS_H
 #define WORKERS_H
 
@@ -15,28 +22,34 @@
 #define FLAG_UP(flag, pos) (flag |= (1 << pos))
 
 // -- Types
-// Worker info
+/**
+ * Worker info
+ */
 struct worker_info {
-	struct worker_pool *info;  // Info about the pool
-	pthread_t thread;          // Info about the thread
-	long unsigned id;          // ID
+    struct worker_pool *info;  // Info about the pool
+    pthread_t thread;          // Info about the thread
+    long unsigned id;          // ID
 };
 
-// Pool of workers
+/**
+ * Pool of workers
+ */
 struct worker_pool {
-	char stop;                      // True if the workers must stop
-	struct worker_info workers[WORKER_THREAD_NB]; // Array of threads
-	int busy_workers;               // List of busy threads
-	list actions;                   // List of actions   
-	pthread_mutex_t mutex;          // General mutex
-	pthread_cond_t cond;            // Thread shared condition
-	pthread_cond_t join_cond;       // Actions empty condition
+    char stop;                      // True if the workers must stop
+    struct worker_info workers[WORKER_THREAD_NB]; // Array of threads
+    int busy_workers;               // List of busy threads
+    list actions;                   // List of actions   
+    pthread_mutex_t mutex;          // General mutex
+    pthread_cond_t cond;            // Thread shared condition
+    pthread_cond_t join_cond;       // Actions empty condition
 };
 
-// Action for the worker thread
+/**
+ * Action for the worker thread
+ */
 struct action {
-	void (*perform)(void*);
-	void* args;
+    void (*perform)(void*);  // Task to perform
+    void* args;              // Arguments given to the task
 };
 
 typedef struct worker_info worker_info;

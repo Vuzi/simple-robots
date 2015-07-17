@@ -1,3 +1,10 @@
+/*
+ * File soket_utils.h
+ * ---------------------------------------------
+ * Collection of functions using sockets
+ * 
+ */
+
 #ifndef H_SOCKET_UTILS
 #define H_SOCKET_UTILS
 
@@ -13,6 +20,7 @@
 
 #include <macro.h>
 
+// -- Prototypes
 int read_msg(int sock, char* buffer, size_t max);
 int send_msg(int sock, const char* format, ...);
 int send_file(int sock, FILE* f);

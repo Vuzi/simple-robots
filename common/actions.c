@@ -1,6 +1,16 @@
+/*
+ * File actions.c
+ * ---------------------------------------------
+ * Action handler implementation 
+ * 
+ */
 #include "actions.h"
 
-// Handle a specified command with the given command and options
+/**
+ * Handle a specified command with the given command and options
+ * @param command The command to handle
+ * @param options The action to use
+ */
 void handle_action(char* command, const struct command_action *options) {
 	int i = 0, in_value = 0, argc = 0;
 	char* argv[32] = { NULL };

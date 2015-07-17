@@ -1,6 +1,17 @@
+/*
+ * File workers.c
+ * ---------------------------------------------
+ * Workers implementation file
+ * 
+ */
+
 #include "workers.h"
 
-// Worker handler used in each worker thread
+/**
+ * Worker internal handler used in each worker thread
+ * 
+ * @param val Value to pass to the worker
+ */
 static void* worker_handler(void *val) {
     worker_info *info = (worker_info*) val;
     
@@ -41,7 +52,11 @@ static void* worker_handler(void *val) {
     return NULL;
 }
 
-// Init the worker system, and start all the worker threads
+/**
+ * Init the worker system, and start all the worker threads
+ * 
+ * @param wpool The worker pool to init
+ */
 void worker_init(worker_pool *wpool) {
     
     // Register all threads as free
@@ -65,7 +80,12 @@ void worker_init(worker_pool *wpool) {
     }
 }
 
-// Add an action to perform
+/**
+ * Add an action to perform. This method won't wait for the completion of the action
+ * 
+ * @param wpool The worker pool itself
+ * @param a     The action to performs on the worker
+ */
 void worker_add(worker_pool *wpool, action *a) {
     // Copy element to have full control on its life cycle
     action* copy = malloc(sizeof(action));
@@ -81,7 +101,11 @@ void worker_add(worker_pool *wpool, action *a) {
     pthread_mutex_unlock(&(wpool->mutex));
 }
 
-// Wait for all the work to be termined
+/**
+ * Wait for all the work to be termined
+ * 
+ * @param wpool The worker pool itself
+ */
 void worker_join(worker_pool *wpool) {
     pthread_mutex_lock(&(wpool->mutex));
     if(wpool->busy_workers || wpool->actions.length > 0)
@@ -89,7 +113,12 @@ void worker_join(worker_pool *wpool) {
     pthread_mutex_unlock(&(wpool->mutex));
 }
 
-// Stop all the worker threads
+/**
+ * Stop all the worker threads. Note that workers already performing a task will wait the end
+ * of the task to return. Tasks waiting may be cancelled
+ * 
+ * @param wpool The worker pool itself
+ */
 void worker_quit(worker_pool *wpool) {
     // Lock, set the stop value, and unlock
     pthread_mutex_lock(&(wpool->mutex));
