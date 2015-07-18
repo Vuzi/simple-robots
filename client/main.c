@@ -35,6 +35,7 @@ static void show_version();
 static void show_informations();
 static void show_help();
 static void show_usages();
+void gethostname(void*, int);
 
 static struct command_action options[] = {
     { "do",  action_do },

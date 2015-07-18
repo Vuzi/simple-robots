@@ -8,7 +8,7 @@
 #include <ncurses.h>
 #include <getopt.h>
 
-#include "server.h"
+#include <server.h>
 
 #define VERSION "0.01"
 
