@@ -47,3 +47,16 @@ int robot_search_id(int *id, robot *r) {
         return 1;
     return 0;
 }
+
+
+/**
+ * Close a robot
+ */
+void robot_close(robot *r) {
+    //  Try to say goodbye
+    send_msg(r->sock, "goodbye\n");
+    
+    // Close & free
+    close(r->sock);
+	free(r);
+}

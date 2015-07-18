@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <ncurses.h>
 #include <getopt.h>
+#include <signal.h>
 
 #include <server.h>
 
@@ -20,6 +21,7 @@ pthread_mutex_t robot_mutex; // Robot list mutex
 worker_pool connection_pool, action_pool; // Pool of workers
 
 // -- Prototype
+static void quit();
 static void* server_handler(void *unused);
 static void action_connect(void *val);
 static void parse_options(int argc, char **argv);
@@ -42,6 +44,10 @@ WINDOW* ncurses_init() {
 	noecho();
 	
 	return w;
+}
+
+void signalHandler(int signum) {
+	quit();
 }
 
 /**
@@ -70,6 +76,11 @@ int main(int argc, char **argv) {
         printw("[x] Could not create server thread : ");
         return EXIT_FAILURE;
 	}
+	
+	// Register signal handlers
+	signal(SIGPWR, signalHandler);
+	signal(SIGINT, signalHandler);
+	signal(SIGHUP, signalHandler);
 
 	// Show greetings
 	printw("[i] -------------------------------------- \n");
@@ -158,7 +169,23 @@ int main(int argc, char **argv) {
 	}
 	
 	end:
-	printw("\nExiting Now\n");
+		quit();
+		
+	return EXIT_SUCCESS;
+}
+
+/**
+ * Close the application
+ */
+static void quit() {
+	// Close all the robot connected
+    pthread_mutex_lock(&robot_mutex);
+    printw("\n[i] Closing all robots\n");
+	list_clear(&robots, (void (*)(void*)) robot_close);
+    pthread_mutex_unlock(&robot_mutex);
+	
+	printw("\n[i]Exiting Now\n\n\n");
+	refresh();
 	
 	// Stop ncurses
 	endwin();
@@ -167,7 +194,7 @@ int main(int argc, char **argv) {
 	worker_quit(&connection_pool);
 	worker_quit(&action_pool);
 	
-	return EXIT_SUCCESS;
+	exit(EXIT_SUCCESS);
 }
 
 /**

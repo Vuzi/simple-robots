@@ -14,6 +14,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+#include <socket_utils.h>
+
 #define NEXT(i) (i = i->next)
 
 /**
@@ -32,5 +34,6 @@ typedef struct robot robot;
 robot* robot_new(int sock, const struct sockaddr_in* sock_info);
 void robot_init(robot* r, int sock, const struct sockaddr_in* sock_info);
 int robot_search_id(int *id, robot *r);
+void robot_close(robot *r);
 
 #endif

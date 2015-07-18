@@ -48,5 +48,5 @@ void handle_action(char* command, const struct command_action *options) {
 		i++;
 	}
 	
-	printf("[i] Unkown command : %s\n", argv[0]);
+	printf("\n[i] Unkown command : %s\n", argv[0]);
 }

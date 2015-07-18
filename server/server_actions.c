@@ -14,7 +14,7 @@ static void robot_send_cmd(robot* r, char **argv);
 static void robot_recv_file(robot* r, const char *source, const char *dest);
 static void robot_show(robot *r, void *unused);
 static void robot_error_remove(robot* r);
-static void robot_close(robot *r);
+static void robot_close_stat(robot *r);
 
 // -- Actions
 /**
@@ -99,14 +99,14 @@ void action_robots_close(int argc, char **argv) {
     pthread_mutex_lock(&robot_mutex);
     if(!id) {
         printw("[i] Closing all robots\n");
-        list_each(&robots, NULL, (void (*)(void *, void *))robot_close);
+        list_each(&robots, NULL, (void (*)(void *, void *))robot_close_stat);
     } else {
         robot* r = list_find(&robots, &id, (int (*)(void *, void *))robot_search_id);
         if(!r) {
             printw("[x] Error : no robot with id %d found\n", id);
         } else {
             printw("[i] Closing robot %s (%d)\n", r->hostname, r->id);
-            robot_close(r);
+            robot_close_stat(r);
         }
     }
     pthread_mutex_unlock(&robot_mutex);
@@ -184,7 +184,7 @@ static int get_robot_id(unsigned int *id, int argc, char* argv[]) {
  * 
  * @param r Robot to close
  */
-static void robot_close(robot *r) {
+static void robot_close_stat(robot *r) {
     //  Try to say goodbye
     send_msg(r->sock, "goodbye\n");
     
