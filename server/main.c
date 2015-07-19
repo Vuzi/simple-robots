@@ -86,14 +86,14 @@ int main(int argc, char **argv) {
 	printw("[i] -------------------------------------- \n");
 	printw("[i]             SimpleRobot\n");
 	printw("[i] -------------------------------------- \n");
-	printw("[i] Press escape to exit \n");
-	printw("[i] Test commands : foo & bar \n");
+	printw("[i] Press escape or type `quit` to exit \n");
 	
 	// Buffer
 	char buffer[BUFFER_SIZE] = { 0 };
 	
 	// Options (NULL terminated)
 	struct command_action options[] = {
+		{ "help",  action_robots_help },
 		{ "show",  action_robots_show },
 		{ "close", action_robots_close },
 		{ "send",  action_robots_send_cmd },

@@ -18,12 +18,34 @@ static void robot_close_stat(robot *r);
 
 // -- Actions
 /**
+ * Show help
+ * 
+ * @param argc Number of arguments
+ * @param argv Arguments sended
+ */
+void action_robots_help(int argc, char **argv) {
+    printw("[i] Simple Robot Server help : \n");
+    printw("[i] -------------------------- \n");
+    printw("[i] show {all|id} : \n");
+    printw("[i]    Show informations about a specified client (detailed)\n");
+    printw("[i]    or about all the connected clients\n");
+    printw("[i] send {all|id} {command} : \n");
+    printw("[i]    Send a command to a specified client\n");
+    printw("[i]    or to all the connected clients\n");
+    printw("[i] get {id} {source path} {destination path} : \n");
+    printw("[i]    Download a file from the specified client\n");
+    printw("[i] close {id|all} : \n");
+    printw("[i]    Close the connection with one or all the clients\n");
+    printw("[i] -------------------------- \n");
+}
+
+/**
  * Show informations about all the robots, or a specified robot
  * 
  * @param argc Number of arguments
  * @param argv Arguments sended
  */
-void action_robots_show(int argc, char* argv[]) {
+void action_robots_show(int argc, char **argv) {
     
     unsigned int id = 0;
     

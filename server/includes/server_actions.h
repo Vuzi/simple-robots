@@ -20,6 +20,7 @@
 #include "server.h"
 
 // Server specific actions
+void action_robots_help(int argc, char **argv);
 void action_robots_show(int argc, char **argv);
 void action_robots_send_cmd(int argc, char **argv);
 void action_robots_rcv_file(int argc, char **argv);
