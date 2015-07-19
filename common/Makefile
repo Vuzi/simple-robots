@@ -1,3 +1,5 @@
+# Simple robot common Makefile
+
 CC= gcc
 CFLAGS= --std=c99
 INCLUDES= ./includes
@@ -11,22 +13,25 @@ LIB= $(LIBDIR)/common.a
 SRC= $(wildcard *.c)
 OBJ= $(patsubst %.c, $(OBJDIR)/%.o, $(SRC))
 
-all: directories $(LIB)
+all: directories msg $(LIB) 
+
+msg:
+	@echo "         Simple Robot common library building..."
 
 directories:
-	mkdir -p ${OBJDIR} ${LIBDIR}
+	@mkdir -p ${OBJDIR} ${LIBDIR}
 
 $(LIB): $(OBJ)
-	ar rcs $@ $^
+	@ar rcs $@ $^
 
 $(OBJDIR)/%.o: %.c
-	$(CC) -o $@ -c $< $(CFLAGS) -I $(INCLUDES)
+	@$(CC) -o $@ -c $< $(CFLAGS) -I $(INCLUDES)
 	
 
 .PHONY: clean mrproper
 
 clean:
-	@rm -rf *.o
+	@rm -rf $(OBJ)
 
 mrproper: clean
 	@rm -rf $(LIB) $(OBJ)

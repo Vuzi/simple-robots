@@ -1,3 +1,5 @@
+# Simple robot server Makefile
+
 CC= gcc
 CFLAGS= --std=c99
 INCLUDES= ../common/includes
@@ -12,21 +14,24 @@ BIN= $(BINDIR)/server
 SRC= $(wildcard *.c)
 OBJ= $(patsubst %.c, $(OBJDIR)/%.o, $(SRC))
 
-all: directories $(BIN)
+all: directories msg $(BIN)
 
+msg:
+	@echo "         Simple Robot Server building..."
+	
 directories:
-	mkdir -p ${OBJDIR} ${BINDIR}
+	@mkdir -p ${OBJDIR} ${BINDIR}
 
 $(BIN): $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS) $(COMMON) $(LDFLAGS) -Iincludes -I $(INCLUDES)
+	@$(CC) -o $@ $^ $(CFLAGS) $(COMMON) $(LDFLAGS) -Iincludes -I $(INCLUDES)
 
 $(OBJDIR)/%.o: %.c
-	$(CC) -o $@ -c $< $(CFLAGS) -I $(INCLUDES) -Iincludes
+	@$(CC) -o $@ -c $< $(CFLAGS) -I $(INCLUDES) -Iincludes
 
 .PHONY: clean mrproper
 
 clean:
-	rm -rf *.o
+	@rm -rf $(OBJ)
 
 mrproper: clean
-	rm -rf $(BIN) $(OBJ)
+	@rm -rf $(BIN) $(OBJ)
