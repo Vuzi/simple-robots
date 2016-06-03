@@ -1,4 +1,4 @@
-# SimpleRobots
+# Simple Robots
 Lightweight C program to send command to clients from a main server
 
 ## Installation
